@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sidebar Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #ff00ff; color: white; padding: 20px; margin: 0; font-family: Arial; height: 100%; overflow: hidden; }
+    h1 { background: yellow; color: black; padding: 20px; text-align: center; border: 3px solid red; margin-bottom: 20px; }
+    h2 { color: #4ade80; margin-top: 20px; margin-bottom: 10px; }
+    p { margin: 10px 0; }
+    #app { background: #0f1720; padding: 20px; border-radius: 8px; margin: 10px 0; }
+    #trustScore { font-size: 48px; font-weight: bold; color: #4ade80; text-align: center; background: #0a1117; padding: 20px; border-radius: 8px; }
+    #eventCount { font-size: 16px; text-align: center; color: #98a6ba; }
+    #events { background: #0a1117; padding: 15px; border-radius: 8px; margin-top: 10px; min-height: 100px; border: 2px dashed #2a3f5f; color: #98a6ba; }
+  </style>
+</head>
+<body>
+  <h1>✅ IFRAME LOADED ✅</h1>
+  <p>If you see this magenta box in the sidebar, the iframe is working!</p>
+  
+  <div id="app">
+    <h2>Status</h2>
+    <p id="status" style="font-size: 18px; color: #4ade80;">Monitoring Active</p>
+    
+    <h2>Trust Score</h2>
+    <div id="trustScore">100.00</div>
+    
+    <h2>Events</h2>
+    <p id="eventCount">0 events detected</p>
+    <div id="events">Waiting for image analysis...</div>
+  </div>
+  
+  <script>
+    console.log('[SIDEBAR] Iframe successfully loaded');
+    
+    window.addEventListener('message', (event) => {
+      console.log('[SIDEBAR] Received postMessage:', event.data);
+      const {payload} = event.data;
+      if (payload) {
+        document.getElementById('eventCount').textContent = 'Image detected: ' + (payload.risk_level || 'UNKNOWN');
+        document.getElementById('trustScore').textContent = payload.trust_score?.toFixed(2) || 'N/A';
+        document.getElementById('events').innerHTML += '<p>Risk: ' + (payload.risk_level || 'N/A') + ' | Fake: ' + ((payload.fake_probability || 0) * 100).toFixed(1) + '%</p>';
+      }
+    });
+  </script>
+</body>
+</html>

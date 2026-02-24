@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob: https:; img-src * data: blob:;">
+  <title>Entity X — Global History</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; background: #060c15; color: #dfe7ef; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1a2d45; border-radius: 3px; }
+
+    /* ── TOP BAR ── */
+    .topbar { height: 44px; background: #080f1c; border-bottom: 1px solid #1a2d45; display: flex; align-items: center; padding: 0 14px; gap: 10px; flex-shrink: 0; user-select: none; }
+    .back-btn { display: flex; align-items: center; gap: 6px; background: #0d1728; border: 1px solid #1a2d45; border-radius: 4px; color: #4facfe; cursor: pointer; padding: 4px 11px; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; transition: background 130ms; }
+    .back-btn:hover { background: #122a4c; }
+    .topbar-sep { width: 1px; height: 20px; background: #1a2d45; flex-shrink: 0; }
+    .topbar-title { font-size: 10px; font-weight: 700; letter-spacing: .15em; color: #4facfe; text-transform: uppercase; }
+    .topbar-count { font-size: 8.5px; color: #2d4a62; background: #0a101c; padding: 2px 9px; border-radius: 3px; border: 1px solid #1a2d45; font-variant-numeric: tabular-nums; }
+    .topbar-spacer { flex: 1; }
+
+    /* filter bar */
+    .filter-group { display: flex; align-items: center; gap: 7px; }
+    .filter-label { font-size: 8px; font-weight: 700; letter-spacing: .1em; color: #2d4a62; text-transform: uppercase; }
+    .filter-sel, .filter-inp {
+      background: #0a101c; border: 1px solid #1a2d45; border-radius: 4px;
+      color: #8aabb8; font-size: 9px; padding: 3px 8px; outline: none;
+      transition: border-color 130ms;
+    }
+    .filter-sel { cursor: pointer; }
+    .filter-sel:hover, .filter-inp:focus { border-color: #2d4a62; color: #dfe7ef; }
+    .filter-inp { width: 160px; }
+    .filter-inp::placeholder { color: #1e3347; }
+    .fetch-btn { background: #0d1728; border: 1px solid #2d4a62; border-radius: 4px; color: #4facfe; cursor: pointer; padding: 3px 11px; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; transition: background 130ms; }
+    .fetch-btn:hover { background: #122a4c; }
+    .loading-dot { width: 7px; height: 7px; border-radius: 50%; background: #4facfe; animation: ldot 1s infinite alternate; display: none; }
+    @keyframes ldot { from { opacity: .2; } to { opacity: 1; } }
+
+    /* ── SHELL ── */
+    .shell { display: flex; flex-direction: column; height: calc(100vh - 44px); overflow: hidden; }
+
+    /* ── STATS BAR ── */
+    .stats-bar { background: #07101e; border-bottom: 1px solid #1a2d45; padding: 6px 16px; display: flex; gap: 18px; align-items: center; flex-shrink: 0; }
+    .stat-chip { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .stat-val { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+    .stat-lbl { font-size: 7.5px; letter-spacing: .12em; text-transform: uppercase; color: #2d4a62; }
+    .sc-total { color: #4facfe; }
+    .sc-img   { color: #4facfe; }
+    .sc-txt   { color: #c084fc; }
+    .sc-hi    { color: #ff6b6b; }
+    .sc-med   { color: #fbbf24; }
+    .sc-lo    { color: #4ade80; }
+    .stats-sep { width: 1px; height: 26px; background: #1a2d45; }
+
+    /* ── TABLE AREA ── */
+    .table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; padding: 0; }
+    table { width: 100%; border-collapse: collapse; min-width: 820px; }
+    thead th { background: #080f1c; position: sticky; top: 0; z-index: 2; font-size: 8px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: #2d4a62; padding: 8px 10px; border-bottom: 1px solid #1a2d45; text-align: left; white-space: nowrap; cursor: pointer; user-select: none; }
+    thead th:hover { color: #4facfe; }
+    thead th .sort-arrow { opacity: .35; margin-left: 3px; font-size: 8px; }
+    thead th.sorted .sort-arrow { opacity: 1; color: #4facfe; }
+    tbody tr { border-bottom: 1px solid #0c1827; transition: background 100ms; }
+    tbody tr:hover { background: #0a1421; }
+    tbody td { padding: 7px 10px; font-size: 10.5px; vertical-align: middle; }
+    .td-id { font-family: 'Consolas','Courier New',monospace; font-size: 9px; color: #2d4a62; white-space: nowrap; }
+    .td-source { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #4a6a85; font-size: 9.5px; }
+    .td-source a { color: #4facfe; text-decoration: none; cursor: pointer; }
+    .td-source a:hover { text-decoration: underline; }
+    .td-ts { font-size: 8.5px; color: #2d4a62; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .type-badge { display: inline-block; font-size: 8px; font-weight: 700; padding: 2px 8px; border-radius: 3px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .tb-img { background: rgba(79,172,254,.13); color: #4facfe; border: 1px solid rgba(79,172,254,.3); }
+    .tb-txt { background: rgba(192,132,252,.13); color: #c084fc; border: 1px solid rgba(192,132,252,.28); }
+    .risk-badge { display: inline-block; font-size: 8px; font-weight: 700; padding: 2px 9px; border-radius: 3px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .rb-high   { background: rgba(255,107,107,.12); color: #ff6b6b; border: 1px solid rgba(255,107,107,.3); }
+    .rb-medium { background: rgba(251,191,36,.12);  color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+    .rb-low    { background: rgba(74,222,128,.1);   color: #4ade80; border: 1px solid rgba(74,222,128,.25); }
+    .td-num { font-variant-numeric: tabular-nums; font-size: 10px; text-align: right; white-space: nowrap; }
+    .inv-btn { display: inline-block; background: #0d1728; border: 1px solid #1a2d45; border-radius: 3px; color: #4facfe; cursor: pointer; padding: 3px 9px; font-size: 8.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; transition: all 120ms; }
+    .inv-btn:hover { background: #122a4c; border-color: #2d4a62; }
+
+    /* ── EMPTY / LOADING STATES ── */
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #1e3347; gap: 10px; padding: 40px; }
+    .empty-icon { font-size: 36px; opacity: .3; }
+    .empty-msg { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .loading-state { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; color: #2d4a62; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+    .spin { width: 16px; height: 16px; border: 2px solid #1a2d45; border-top-color: #4facfe; border-radius: 50%; animation: spin 700ms linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ── TOP BAR ── -->
+<div class="topbar">
+  <button class="back-btn" id="back-btn">&#x2190; Return</button>
+  <div class="topbar-sep"></div>
+  <div class="topbar-title">&#x1F4DC; Global Entity History</div>
+  <div class="topbar-count" id="count-chip">0 records</div>
+  <div class="topbar-sep"></div>
+
+  <!-- Filters -->
+  <div class="filter-group">
+    <span class="filter-label">Type</span>
+    <select class="filter-sel" id="f-type">
+      <option value="">All</option>
+      <option value="IMAGE">Image</option>
+      <option value="TEXT">Text</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Risk</span>
+    <select class="filter-sel" id="f-risk">
+      <option value="">All</option>
+      <option value="HIGH">High</option>
+      <option value="MEDIUM">Medium</option>
+      <option value="LOW">Low</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <input type="text" class="filter-inp" id="f-search" placeholder="Search source URL..." />
+  </div>
+  <button class="fetch-btn" id="fetch-btn">Apply</button>
+  <div class="loading-dot" id="loading-dot"></div>
+
+  <div class="topbar-spacer"></div>
+</div>
+
+<!-- ── SHELL ── -->
+<div class="shell" id="shell">
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-chip"><div class="stat-val sc-total" id="s-total">0</div><div class="stat-lbl">Total</div></div>
+    <div class="stats-sep"></div>
+    <div class="stat-chip"><div class="stat-val sc-img" id="s-img">0</div><div class="stat-lbl">Images</div></div>
+    <div class="stat-chip"><div class="stat-val sc-txt" id="s-txt">0</div><div class="stat-lbl">Text</div></div>
+    <div class="stats-sep"></div>
+    <div class="stat-chip"><div class="stat-val sc-hi"  id="s-hi">0</div><div class="stat-lbl">High Risk</div></div>
+    <div class="stat-chip"><div class="stat-val sc-med" id="s-med">0</div><div class="stat-lbl">Medium</div></div>
+    <div class="stat-chip"><div class="stat-val sc-lo"  id="s-lo">0</div><div class="stat-lbl">Low</div></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table id="hist-table">
+      <thead>
+        <tr>
+          <th data-col="timestamp"  class="sorted">Timestamp <span class="sort-arrow">&#x25BC;</span></th>
+          <th data-col="entity_id">Entity ID <span class="sort-arrow">&#x25B2;</span></th>
+          <th data-col="type">Type <span class="sort-arrow">&#x25B2;</span></th>
+          <th data-col="risk_level">Risk <span class="sort-arrow">&#x25B2;</span></th>
+          <th data-col="source_url">Source <span class="sort-arrow">&#x25B2;</span></th>
+          <th data-col="fake_probability" style="text-align:right;">Fake % <span class="sort-arrow">&#x25B2;</span></th>
+          <th data-col="trust_score_after" style="text-align:right;">Trust Score <span class="sort-arrow">&#x25B2;</span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="hist-tbody"></tbody>
+    </table>
+
+    <!-- States -->
+    <div class="loading-state" id="loading-state" style="display:none;">
+      <div class="spin"></div>LOADING HISTORY…
+    </div>
+    <div class="empty-state" id="empty-state" style="display:none;">
+      <div class="empty-icon">&#x1F4C2;</div>
+      <div class="empty-msg">No records found</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="history.js"></script>
+</body>
+</html>

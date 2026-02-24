@@ -1,0 +1,1939 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Entity X</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; background: #080d14; color: #dfe7ef; }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #1a2d45; border-radius: 2px; }
+    .app-shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+    .app-nav { width: 192px; flex-shrink: 0; background: #0a101c; border-right: 1px solid #1a2d45; display: flex; flex-direction: column; }
+    .nav-logo { padding: 14px; border-bottom: 1px solid #1a2d45; display: flex; align-items: center; gap: 9px; }
+    .nav-logo-icon { width: 25px; height: 25px; background: linear-gradient(135deg, #4facfe 0%, #00d4ff 100%); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; font-weight: bold; flex-shrink: 0; }
+    .nav-logo-text { font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #e2ecf7; }
+    .nav-logo-text span { color: #4facfe; }
+    .nav-items { list-style: none; padding: 9px 0; margin: 0; flex: 1; }
+    .nav-item { padding: 9px 13px; cursor: pointer; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #2d4a62; text-transform: uppercase; display: flex; align-items: center; gap: 8px; border-left: 2px solid transparent; transition: all 130ms; user-select: none; }
+    .nav-item:hover { color: #5a7a95; background: rgba(79,172,254,.05); }
+    .nav-item.active { color: #4facfe; background: rgba(79,172,254,.1); border-left-color: #4facfe; }
+    .nav-status { padding: 9px 13px; border-top: 1px solid #1a2d45; display: flex; align-items: center; gap: 7px; }
+    .sdot { width: 6px; height: 6px; border-radius: 50%; background: #2bd576; animation: pdot 1.6s infinite; flex-shrink: 0; }
+    @keyframes pdot { 0%{box-shadow:0 0 0 0 rgba(43,213,118,.7)} 70%{box-shadow:0 0 0 5px rgba(43,213,118,0)} 100%{box-shadow:0 0 0 0 rgba(43,213,118,0)} }
+    .stxt { font-size: 8.5px; font-weight: 700; color: #2bd576; letter-spacing: 0.1em; text-transform: uppercase; }
+    .app-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .app-topbar { height: 35px; flex-shrink: 0; background: #0a101c; border-bottom: 1px solid #1a2d45; display: flex; align-items: center; justify-content: space-between; padding: 0 13px; }
+    .tl { font-size: 8.5px; color: #1e3347; letter-spacing: 0.15em; text-transform: uppercase; }
+    .tr { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #4facfe; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .tdot { width: 4px; height: 4px; background: #4facfe; border-radius: 50%; }
+    .app-body { flex: 1; display: flex; overflow: hidden; }
+    .section-container { flex: 1; position: relative; overflow: hidden; min-width: 0; }
+    .app-section { position: absolute; inset: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 13px; visibility: hidden; pointer-events: none; }
+    .app-section.active { visibility: visible; pointer-events: auto; z-index: 1; }
+    #section-live-monitor { padding: 0; gap: 0; flex-direction: row; overflow: hidden; }
+    .console-panel { width: 258px; flex-shrink: 0; background: #0a101c; border-left: 1px solid #1a2d45; display: flex; flex-direction: column; }
+    .console-hdr { padding: 7px 11px; border-bottom: 1px solid #1a2d45; font-size: 8.5px; font-weight: 700; letter-spacing: 0.13em; color: #2d4a62; text-transform: uppercase; }
+    .console-body { flex: 1; overflow-y: auto; padding: 6px 8px; font-family: 'Consolas','Courier New',monospace; font-size: 8.5px; display: flex; flex-direction: column; gap: 1px; }
+    .ce { display: flex; gap: 4px; line-height: 1.6; word-break: break-all; }
+    .ce-t { color: #1e3347; flex-shrink: 0; }
+    .c-info { color: #4facfe; } .c-warn { color: #fbbf24; } .c-danger { color: #ff6b6b; } .c-success { color: #4ade80; } .c-muted { color: #2d4a62; }
+    .panel { background: #0d1728; border: 1px solid #1a2d45; border-radius: 6px; }
+    .panel-hdr { padding: 8px 12px; border-bottom: 1px solid #1a2d45; display: flex; align-items: center; justify-content: space-between; }
+    .panel-title { font-size: 8.5px; font-weight: 700; letter-spacing: 0.13em; color: #2d4a62; text-transform: uppercase; }
+    .panel-body { padding: 12px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .stat-card { background: #0d1728; border: 1px solid #1a2d45; border-radius: 6px; padding: 12px; }
+    .stat-lbl { font-size: 8px; color: #2d4a62; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+    .stat-val { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stat-sub { font-size: 8px; color: #2d4a62; margin-top: 3px; }
+    .browser-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .browser-bar { display: flex; gap: 5px; padding: 5px 8px; background: #0d1728; border-bottom: 1px solid #1a2d45; flex-shrink: 0; }
+    .browser-bar button { min-width: 24px; height: 24px; border: 1px solid #1a2d45; border-radius: 4px; background: #0a101c; color: #3d5a73; cursor: pointer; font-size: 11px; }
+    .browser-bar button:hover { background: #1a2d45; color: #dfe7ef; }
+    .browser-bar input { flex: 1; height: 24px; border: 1px solid #1a2d45; border-radius: 4px; background: #0a101c; color: #dfe7ef; padding: 0 8px; font-size: 10.5px; outline: none; }
+    .browser-bar input:focus { border-color: #4facfe; }
+    .go-btn { padding: 0 10px !important; background: #122a4c !important; color: #4facfe !important; border-color: #1a4070 !important; font-weight: 700 !important; font-size: 9.5px !important; }
+    #webview { flex: 1; width: 100%; }
+    .detection-panel { width: 290px; flex-shrink: 0; background: #0a101c; border-left: 1px solid #1a2d45; display: flex; flex-direction: column; overflow: hidden; }
+    .det-hdr { padding: 7px 10px; border-bottom: 1px solid #1a2d45; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .det-feed { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 5px; }
+    .ev-card { background: #0d1728; border: 1px solid #1a2d45; border-left: 3px solid #2bd576; border-radius: 5px; padding: 7px; animation: sld 200ms ease; }
+    @keyframes sld { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:none} }
+    .ev-card.rm { border-left-color: #fbbf24; } .ev-card.rh { border-left-color: #ff6b6b; }
+    .ev-top { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
+    .ev-type { font-size: 7px; font-weight: 700; padding: 1.5px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: .06em; }
+    .et-img { background: rgba(79,172,254,.18); color: #4facfe; } .et-txt { background: rgba(192,132,252,.18); color: #c084fc; }
+    .ev-risk { font-size: 7px; font-weight: 700; padding: 1.5px 5px; border-radius: 3px; text-transform: uppercase; }
+    .rl { background: rgba(74,222,128,.18); color: #4ade80; } .rmb { background: rgba(251,191,36,.18); color: #fbbf24; } .rhb { background: rgba(255,107,107,.18); color: #ff6b6b; }
+    .ev-title { font-size: 9px; color: #6a8fa8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ev-score { font-size: 8px; color: #2d4a62; margin-top: 1px; }
+    .ev-btn { margin-top: 4px; font-size: 8px; color: #4facfe; cursor: pointer; background: none; border: none; padding: 0; }
+    .ev-btn:hover { text-decoration: underline; }
+    .ev-body { display: flex; gap: 7px; align-items: flex-start; margin-top: 5px; }
+    .ev-thumb { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; border: 1px solid #1a2d45; background: #0a101c; flex-shrink: 0; }
+    .ev-thumb-ph { width: 50px; height: 50px; border-radius: 4px; background: #0a101c; border: 1px solid #1a2d45; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #1e3347; font-size: 16px; }
+    .ev-meta { flex: 1; min-width: 0; }
+    .ev-details { margin-top: 4px; }
+    .ev-details summary { font-size: 8.5px; color: #3d5a73; cursor: pointer; list-style: none; padding: 2px 0; }
+    .ev-details summary::before { content: '\25B6\FE0E  '; font-size: 7px; color: #2bd576; transition: transform 120ms; }
+    .ev-details[open] summary::before { content: '\25BC\FE0E  '; }
+    .ev-expl { margin: 3px 0 0; padding-left: 10px; } .ev-expl li { font-size: 8.5px; color: #3d5a73; margin-bottom: 2px; line-height: 1.4; }
+    .analyst-tabs { display: flex; border-bottom: 1px solid #1a2d45; margin-bottom: 13px; }
+    .atab { padding: 7px 15px; font-size: 9.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; cursor: pointer; color: #2d4a62; border-bottom: 2px solid transparent; transition: all 130ms; }
+    .atab:hover { color: #4a6a85; } .atab.active { color: #4facfe; border-bottom-color: #4facfe; }
+    .atab-content { display: none; flex-direction: column; gap: 10px; } .atab-content.active { display: flex; }
+    .inp-grp { display: flex; flex-direction: column; gap: 5px; }
+    .inp-lbl { font-size: 8.5px; color: #3d5a73; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; }
+    .app-input { background: #0d1728; border: 1px solid #1a2d45; border-radius: 5px; color: #dfe7ef; padding: 8px 10px; font-size: 11.5px; outline: none; width: 100%; font-family: 'Segoe UI',Arial,sans-serif; transition: border-color 130ms; }
+    .app-input:focus { border-color: #4facfe; }
+    .app-textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+    .app-btn { padding: 7px 17px; border-radius: 5px; border: none; cursor: pointer; font-size: 9.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; transition: all 130ms; }
+    .btn-primary { background: #122a4c; color: #4facfe; border: 1px solid #1a4070; }
+    .btn-primary:hover { background: #183660; } .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+    .spinner { display: inline-block; width: 11px; height: 11px; border: 2px solid #1a2d45; border-top-color: #4facfe; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .aresult { background: #0d1728; border: 1px solid #1a2d45; border-radius: 6px; padding: 12px; display: none; flex-direction: column; gap: 8px; }
+    .aresult.visible { display: flex; }
+    .rmet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .rmet { text-align: center; }
+    .rmet-val { font-size: 19px; font-weight: 700; } .rmet-lbl { font-size: 7.5px; color: #2d4a62; text-transform: uppercase; letter-spacing: .09em; margin-top: 2px; }
+    .rexpl { font-size: 10px; color: #3d5a73; line-height: 1.5; }
+    .rexpl ul { margin: 0; padding-left: 14px; } .rexpl li { margin-bottom: 3px; }
+    .rview-btn { align-self: flex-start; padding: 5px 12px; border-radius: 4px; background: rgba(79,172,254,.1); border: 1px solid rgba(79,172,254,.25); color: #4facfe; font-size: 9px; font-weight: 700; cursor: pointer; letter-spacing: .06em; }
+    .rview-btn:hover { background: rgba(79,172,254,.2); }
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    .hist-table th { text-align: left; padding: 7px 10px; font-size: 8px; font-weight: 700; letter-spacing: .1em; color: #2d4a62; text-transform: uppercase; border-bottom: 1px solid #1a2d45; background: #0a101c; }
+    .hist-table td { padding: 7px 10px; border-bottom: 1px solid #111e2e; color: #4a6a85; vertical-align: middle; }
+    .hist-table tr:hover td { background: rgba(79,172,254,.03); }
+    .ht-link { color: #4facfe; cursor: pointer; font-size: 8px; padding: 2px 7px; border: 1px solid rgba(79,172,254,.25); border-radius: 3px; background: rgba(79,172,254,.07); font-weight: 700; white-space: nowrap; }
+    .ht-link:hover { background: rgba(79,172,254,.18); }
+    .ht-empty { text-align: center; padding: 32px; color: #1e3347; font-size: 10.5px; }
+    .flab-ph { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: #1e3347; }
+    .flab-icon { font-size: 30px; opacity: .35; } .flab-txt { font-size: 10.5px; letter-spacing: .05em; }
+    .flab-content { display: flex; flex-direction: column; gap: 13px; }
+    .fmet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .fmet { background: #0d1728; border: 1px solid #1a2d45; border-radius: 6px; padding: 12px; text-align: center; }
+    .fmet-val { font-size: 24px; font-weight: 700; } .fmet-lbl { font-size: 7.5px; color: #2d4a62; text-transform: uppercase; letter-spacing: .09em; margin-top: 3px; }
+    .fevidence { background: #0d1728; border: 1px solid #1a2d45; border-radius: 6px; padding: 12px; }
+    .fevidence ul { margin: 7px 0 0; padding-left: 14px; display: flex; flex-direction: column; gap: 3px; }
+    .fevidence li { font-size: 10px; color: #3d5a73; line-height: 1.5; }
+    .badge { display: inline-block; padding: 1.5px 6px; border-radius: 3px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .empty-state { text-align: center; padding: 26px; color: #1e3347; font-size: 10.5px; }
+    .row-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid #0f1c2e; font-size: 10px; }
+    /* ── Entity View overlay ── */
+    .ev-overlay { position: fixed; inset: 0; z-index: 9999; background: #060c15; display: none; }
+    .ev-overlay.open { display: block; }
+    #ev-frame { width: 100%; height: 100%; border: none; display: block; }
+    .ev-overlay-enter { animation: evIn 220ms cubic-bezier(.4,0,.2,1); }
+    @keyframes evIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .ev-open-btn { margin-top: 4px; font-size: 8px; color: #c084fc; cursor: pointer; background: none; border: none; padding: 0; display: block; width: 100%; text-align: left; }
+    .ev-open-btn:hover { text-decoration: underline; }
+    /* ── History overlay ── */
+    .hist-overlay { position: fixed; inset: 0; z-index: 9998; background: #060c15; display: none; }
+    .hist-overlay.open { display: block; }
+    #hist-frame { width: 100%; height: 100%; border: none; display: block; }
+    .hist-overlay-enter { animation: histIn 220ms cubic-bezier(.4,0,.2,1); }
+    @keyframes histIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .hist-view-btn { font-size: 8px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #4facfe; cursor: pointer; background: #0d1728; border: 1px solid #1a2d45; border-radius: 3px; padding: 3px 9px; transition: background 130ms; }
+    .hist-view-btn:hover { background: #122a4c; }
+
+    /* ── Legal Complaint Generator section ── */
+    /* Section itself must NOT scroll — we do it in the inner scroll area so the chat sticks to bottom */
+    #section-legal-complaint { flex-direction: column; gap: 0; overflow: hidden !important; padding: 0 !important; }
+    .lc-scroll-area { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 13px; }
+    .lc-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; align-items: start; }
+    /* disclaimer */
+    .lc-disclaimer { border: 1px solid rgba(251,191,36,.22); border-radius: 6px; background: rgba(251,191,36,.05); padding: 11px 14px; display: flex; gap: 10px; align-items: flex-start; }
+    .lc-disc-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .lc-disc-text { font-size: 10px; color: #a08030; line-height: 1.65; }
+    .lc-disc-text strong { color: #fbbf24; }
+    /* form panel */
+    .lc-form { display: flex; flex-direction: column; gap: 9px; padding: 13px; }
+    .lc-field { display: flex; flex-direction: column; gap: 4px; }
+    .lc-lbl { font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #2d4a62; }
+    .lc-input, .lc-select, .lc-textarea { background: #07101e; border: 1px solid #1a2d45; border-radius: 4px; color: #dfe7ef; padding: 6px 9px; font-size: 10.5px; outline: none; width: 100%; font-family: 'Segoe UI',Arial,sans-serif; transition: border-color 130ms; }
+    .lc-input:focus, .lc-select:focus, .lc-textarea:focus { border-color: #2d4a62; }
+    .lc-select option { background: #07101e; }
+    .lc-textarea { resize: vertical; min-height: 72px; line-height: 1.5; font-size: 10px; }
+    .lc-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .lc-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+    .lc-hint { font-size: 8px; color: #1e3347; margin-top: 1px; }
+    .lc-gen-row { display: flex; align-items: center; gap: 10px; padding: 4px 13px 13px; }
+    .lc-gen-btn { display: flex; align-items: center; gap: 7px; padding: 8px 18px; background: #0d1728; border: 1px solid #2d4a62; border-radius: 5px; color: #4facfe; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; cursor: pointer; transition: all 150ms; }
+    .lc-gen-btn:hover:not(:disabled) { background: #122a4c; border-color: #4facfe; }
+    .lc-gen-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .lc-gen-btn .lc-spin { width: 11px; height: 11px; border: 1.5px solid #1a2d45; border-top-color: #4facfe; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+    .lc-gen-btn.generating .lc-spin { display: block; }
+    .lc-status { font-size: 9px; color: #2d4a62; font-style: italic; }
+    /* output panel */
+    .lc-output { display: flex; flex-direction: column; gap: 9px; padding: 13px; }
+    .lc-out-ph { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 32px; color: #1e3347; }
+    .lc-out-ph-icon { font-size: 28px; opacity: .3; }
+    .lc-out-ph-txt { font-size: 10px; letter-spacing: .06em; text-align: center; }
+    .lc-draft-wrap { display: none; flex-direction: column; gap: 8px; }
+    .lc-draft-wrap.visible { display: flex; }
+    .lc-draft-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .lc-draft-lbl-text { font-size: 8px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; color: #2d4a62; }
+    .lc-editable-badge { font-size: 7.5px; padding: 2px 7px; border-radius: 3px; background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.2); color: #4ade80; letter-spacing: .06em; text-transform: uppercase; }
+    .lc-draft-ta { width: 100%; min-height: 300px; background: #060c15; border: 1px solid #1a2d45; border-radius: 4px; color: #8aabb8; font-family: 'Consolas','Courier New',monospace; font-size: 9px; line-height: 1.7; padding: 10px 12px; resize: vertical; outline: none; transition: border-color 130ms; }
+    .lc-draft-ta:focus { border-color: #2d4a62; color: #dfe7ef; }
+    .lc-action-row { display: flex; gap: 7px; flex-wrap: wrap; }
+    .lc-act-btn { padding: 5px 13px; border: 1px solid #1a2d45; border-radius: 4px; background: #0d1728; color: #4facfe; font-size: 8.5px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: .07em; transition: all 130ms; white-space: nowrap; }
+    .lc-act-btn:hover { background: #122a4c; border-color: #2d4a62; }
+    .lc-act-btn.success-flash { color: #4ade80; border-color: rgba(74,222,128,.3); }
+    .lc-act-btn.json { color: #c084fc; border-color: rgba(192,132,252,.2); }
+    .lc-act-btn.json:hover { background: rgba(192,132,252,.06); border-color: rgba(192,132,252,.4); }
+    /* pre-fill badge */
+    .lc-prefill-banner { display: none; align-items: center; gap: 8px; padding: 7px 13px; background: rgba(79,172,254,.06); border-bottom: 1px dashed rgba(79,172,254,.15); font-size: 9px; color: #3d5a73; }
+    .lc-prefill-banner.visible { display: flex; }
+    .lc-prefill-clear { margin-left: auto; font-size: 8px; color: #2d4a62; cursor: pointer; background: none; border: none; padding: 0; text-transform: uppercase; letter-spacing: .07em; }
+    .lc-prefill-clear:hover { color: #ff6b6b; }
+
+    /* ── AI Assistant Chat Panel ── */
+    /* NOT sticky — lives BELOW the scroll area as a fixed-height flex child */
+    .ai-chat-panel { display: flex; flex-direction: column; border-top: 1px solid #1a3358; background: #070e1a; overflow: hidden; flex-shrink: 0; height: 270px; }
+    .ai-chat-hdr { display: flex; align-items: center; justify-content: space-between; padding: 8px 13px; background: linear-gradient(90deg,#070e1a 0%,#0d1e36 100%); border-bottom: 1px solid #1a3358; flex-shrink: 0; }
+    .ai-chat-hdr-left { display: flex; align-items: center; gap: 8px; }
+    .ai-chat-badge { font-size: 7.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; background: rgba(79,172,254,.12); border: 1px solid rgba(79,172,254,.25); color: #4facfe; }
+    .ai-chat-model { font-size: 7.5px; color: #1e3347; letter-spacing: .06em; }
+    .ai-chat-clear { font-size: 7.5px; color: #2d4a62; cursor: pointer; background: none; border: none; padding: 0; text-transform: uppercase; letter-spacing: .06em; }
+    .ai-chat-clear:hover { color: #ff6b6b; }
+    .ai-chat-msgs { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-height: 0; max-height: none; }
+    .ai-chat-empty { margin: auto; text-align: center; color: #1e3347; font-size: 10px; line-height: 1.6; }
+    .ai-chat-empty-icon { font-size: 22px; opacity: .3; margin-bottom: 6px; }
+    .ai-msg { display: flex; flex-direction: column; gap: 2px; max-width: 88%; }
+    .ai-msg.user { align-self: flex-end; align-items: flex-end; }
+    .ai-msg.assistant { align-self: flex-start; align-items: flex-start; }
+    .ai-msg-bubble { padding: 7px 11px; border-radius: 6px; font-size: 10.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .ai-msg.user .ai-msg-bubble { background: #122a4c; border: 1px solid #1a4070; color: #b8d4f0; border-bottom-right-radius: 2px; }
+    .ai-msg.assistant .ai-msg-bubble { background: #0d1728; border: 1px solid #1a2d45; color: #7aa5bf; border-bottom-left-radius: 2px; }
+    .ai-msg-lbl { font-size: 7.5px; color: #1e3347; text-transform: uppercase; letter-spacing: .07em; }
+    .ai-msg.assistant .ai-msg-lbl { color: #4facfe; }
+    .ai-chat-input-row { display: flex; gap: 7px; padding: 8px 10px; border-top: 1px solid #1a2d45; background: #060c15; flex-shrink: 0; }
+    .ai-chat-input { flex: 1; background: #0d1728; border: 1px solid #1a2d45; border-radius: 4px; color: #dfe7ef; padding: 7px 10px; font-size: 10.5px; outline: none; font-family: 'Segoe UI',Arial,sans-serif; resize: none; min-height: 34px; max-height: 90px; line-height: 1.45; }
+    .ai-chat-input:focus { border-color: #2d4a62; }
+    .ai-chat-send { padding: 0 14px; background: #122a4c; border: 1px solid #1a4070; border-radius: 4px; color: #4facfe; font-size: 10px; font-weight: 700; cursor: pointer; flex-shrink: 0; letter-spacing: .06em; text-transform: uppercase; transition: background 130ms; white-space: nowrap; }
+    .ai-chat-send:hover:not(:disabled) { background: #183660; }
+    .ai-chat-send:disabled { opacity: .38; cursor: not-allowed; }
+    .ai-chat-thinking { align-self: flex-start; padding: 6px 11px; font-size: 9.5px; color: #2d4a62; font-style: italic; display: flex; align-items: center; gap: 7px; }
+    .ai-chat-thinking .spinner { width: 9px; height: 9px; border-width: 1.5px; }
+    .ai-ctx-toggle { font-size: 7.5px; color: #2d4a62; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px solid #1a2d45; border-radius: 3px; background: none; white-space: nowrap; }
+    .ai-ctx-toggle.on { color: #4ade80; border-color: rgba(74,222,128,.25); background: rgba(74,222,128,.06); }
+    .ai-ctx-toggle:hover { border-color: #2d4a62; }
+
+    /* ── Right Panel: tabbed Console ↔ Entity X Chat ── */
+    .rp-tabbar { display: flex; flex-shrink: 0; border-bottom: 1px solid #1a2d45; }
+    .rp-tab { flex: 1; padding: 7px 4px; font-size: 7.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #2d4a62; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 120ms; }
+    .rp-tab:hover { color: #4a6a85; background: rgba(79,172,254,.04); }
+    .rp-tab.active { color: #4facfe; border-bottom-color: #4facfe; background: rgba(79,172,254,.06); }
+    .rp-pane { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+    .rp-pane.active { display: flex; }
+    /* Entity X Chat */
+    .xai-hdr { padding: 6px 10px; border-bottom: 1px solid #1a2d45; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .xai-ctx-badge { font-size: 7px; padding: 2px 6px; border-radius: 3px; background: #0d1728; border: 1px solid #1a2d45; color: #2d4a62; font-weight: 700; letter-spacing: .05em; max-width: 156px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 200ms; }
+    .xai-ctx-badge.entity { background: rgba(74,222,128,.08); border-color: rgba(74,222,128,.22); color: #4ade80; }
+    .xai-clear { font-size: 7px; color: #2d4a62; cursor: pointer; background: none; border: none; padding: 0; text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0; }
+    .xai-clear:hover { color: #ff6b6b; }
+    .xai-msgs { flex: 1; overflow-y: auto; padding: 9px 8px; display: flex; flex-direction: column; gap: 7px; min-height: 0; }
+    .xai-empty { margin: auto; text-align: center; color: #1e3347; line-height: 1.7; }
+    .xai-empty-icon { font-size: 20px; opacity: .25; margin-bottom: 5px; }
+    .xai-msg { display: flex; flex-direction: column; gap: 2px; max-width: 94%; }
+    .xai-msg.user { align-self: flex-end; align-items: flex-end; }
+    .xai-msg.assistant { align-self: flex-start; align-items: flex-start; }
+    .xai-msg-lbl { font-size: 7px; color: #1e3347; text-transform: uppercase; letter-spacing: .07em; }
+    .xai-msg.assistant .xai-msg-lbl { color: #4facfe; }
+    .xai-bubble { padding: 6px 9px; border-radius: 5px; font-size: 9.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .xai-msg.user .xai-bubble { background: #122a4c; border: 1px solid #1a4070; color: #b8d4f0; border-bottom-right-radius: 2px; }
+    .xai-msg.assistant .xai-bubble { background: #0d1728; border: 1px solid #1a2d45; color: #7aa5bf; border-bottom-left-radius: 2px; }
+    .xai-thinking { align-self: flex-start; padding: 5px 9px; font-size: 9px; color: #2d4a62; font-style: italic; display: flex; align-items: center; gap: 6px; }
+    .xai-thinking .spinner { width: 8px; height: 8px; border-width: 1.5px; }
+    .xai-input-row { display: flex; gap: 6px; padding: 7px 8px; border-top: 1px solid #1a2d45; flex-shrink: 0; background: #060c15; }
+    .xai-input { flex: 1; background: #0d1728; border: 1px solid #1a2d45; border-radius: 4px; color: #dfe7ef; padding: 6px 8px; font-size: 9.5px; outline: none; font-family: 'Segoe UI',Arial,sans-serif; resize: none; min-height: 30px; max-height: 80px; line-height: 1.45; }
+    .xai-input:focus { border-color: #2d4a62; }
+    .xai-send { padding: 0 10px; background: #122a4c; border: 1px solid #1a4070; border-radius: 4px; color: #4facfe; font-size: 8.5px; font-weight: 700; cursor: pointer; flex-shrink: 0; letter-spacing: .05em; text-transform: uppercase; transition: background 130ms; }
+    .xai-send:hover:not(:disabled) { background: #183660; }
+    .xai-send:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* ── Trust Evolution pane ── */
+    .te-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 8px 8px 5px; gap: 5px; }
+    .te-title-row { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .te-title { font-size: 8px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: #2d4a62; }
+    .te-live-dot { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; animation: pdot 1.6s infinite; }
+    .te-canvas-wrap { flex: 1; position: relative; min-height: 0; background: #060c15; border-radius: 4px; border: 1px solid #1a2d45; overflow: hidden; }
+    .te-canvas { display: block; width: 100%; height: 100%; cursor: default; }
+    .te-legend { display: flex; gap: 10px; flex-shrink: 0; padding: 1px 2px; }
+    .te-leg { display: flex; align-items: center; gap: 4px; font-size: 7px; color: #2d4a62; letter-spacing: .06em; }
+    .te-leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .te-empty { margin: auto; text-align: center; color: #1e3347; font-size: 9px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <nav class="app-nav">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">&#x2B21;</div>
+      <div class="nav-logo-text">ENTITY<span>X</span></div>
+    </div>
+    <ul class="nav-items">
+      <li class="nav-item active" data-section="control-center">&#x229E; Control Center</li>
+      <li class="nav-item" data-section="live-monitor">&#x25C9; Live Monitor</li>
+      <li class="nav-item" data-section="intel-analyst">&#x2295; Intel Analyst</li>
+      <li class="nav-item" data-section="forensic-lab">&#x229B; Forensic Lab</li>
+      <li class="nav-item" data-section="audit-history">&#x2261; Audit History</li>
+      <li class="nav-item" data-section="legal-complaint">&#x2696; Legal Complaint</li>
+    </ul>
+    <div class="nav-status">
+      <div class="sdot"></div>
+      <div class="stxt">CONTINUOUS_OBS | WEB</div>
+    </div>
+  </nav>
+
+  <div class="app-main">
+    <div class="app-topbar">
+      <div class="tl">LIAISON NODE 04.9</div>
+      <div class="tr"><div class="tdot"></div><span id="sectionLabel">CONTROL CENTER</span></div>
+    </div>
+    <div class="app-body">
+      <div class="section-container">
+
+        <!-- CONTROL CENTER -->
+        <section class="app-section active" id="section-control-center">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-lbl">Trust Score</div>
+              <div class="stat-val" id="cc-trust" style="color:#4ade80;">100.0</div>
+              <div class="stat-sub" id="cc-trust-lbl">STABLE</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-lbl">Total Detections</div>
+              <div class="stat-val" id="cc-total" style="color:#4facfe;">0</div>
+              <div class="stat-sub">entities analyzed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-lbl">High Risk</div>
+              <div class="stat-val" id="cc-high" style="color:#ff6b6b;">0</div>
+              <div class="stat-sub">flagged items</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-lbl">Medium Risk</div>
+              <div class="stat-val" id="cc-medium" style="color:#fbbf24;">0</div>
+              <div class="stat-sub">flagged items</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-hdr">
+              <div class="panel-title">Recent Activity</div>
+              <span style="font-size:8px;color:#2d4a62;" id="cc-count">0 events</span>
+            </div>
+            <div id="cc-activity">
+              <div class="empty-state">No activity yet. Browse in Live Monitor or use Intel Analyst.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LIVE MONITOR -->
+        <section class="app-section" id="section-live-monitor">
+          <div class="browser-pane">
+            <div class="browser-bar">
+              <button id="backBtn">&#8592;</button>
+              <button id="forwardBtn">&#8594;</button>
+              <button id="reloadBtn">&#8635;</button>
+              <input id="addressBar" type="text" value="https://unsplash.com" />
+              <button class="go-btn" id="goBtn">Go</button>
+            </div>
+            <webview id="webview" src="https://unsplash.com" preload="file:///C:/MY-PROJECTS/vs-g-entity/renderer/webview-preload.js" partition="persist:browser" allowpopups></webview>
+          </div>
+          <div class="detection-panel">
+            <div class="det-hdr">
+              <div class="panel-title">Real-Time Feed</div>
+              <span style="font-size:8px;color:#2d4a62;" id="lm-count">0 events</span>
+            </div>
+            <div class="det-feed" id="lm-feed">
+              <div class="empty-state">Monitoring active.<br>Browse any website.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- INTEL ANALYST -->
+        <section class="app-section" id="section-intel-analyst">
+          <div class="analyst-tabs">
+            <div class="atab active" data-tab="tab-url">URL Analysis</div>
+            <div class="atab" data-tab="tab-text">Text / Article Analysis</div>
+          </div>
+          <div class="atab-content active" id="tab-url">
+            <div class="inp-grp">
+              <div class="inp-lbl">News Article URL or Image URL</div>
+              <input class="app-input" id="url-input" type="text" placeholder="https://bbc.com/news/article  or  https://example.com/image.jpg" />
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="app-btn btn-primary" id="analyze-url-btn">Analyze URL</button>
+              <span id="url-spin" style="display:none;"><span class="spinner"></span></span>
+            </div>
+            <div class="aresult" id="url-result"></div>
+          </div>
+          <div class="atab-content" id="tab-text">
+            <div class="inp-grp">
+              <div class="inp-lbl">Title (optional)</div>
+              <input class="app-input" id="text-title" type="text" placeholder="Article or content title..." />
+            </div>
+            <div class="inp-grp">
+              <div class="inp-lbl">Paste Article / News Text</div>
+              <textarea class="app-input app-textarea" id="text-input" placeholder="Paste any news article, social media post, or text content here (minimum 10 words)..."></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="app-btn btn-primary" id="analyze-text-btn">Analyze Text</button>
+              <span id="text-spin" style="display:none;"><span class="spinner"></span></span>
+            </div>
+            <div class="aresult" id="text-result"></div>
+          </div>
+        </section>
+
+        <!-- FORENSIC LAB -->
+        <section class="app-section" id="section-forensic-lab">
+          <div id="flab-ph" class="flab-ph">
+            <div class="flab-icon">&#x229B;</div>
+            <div class="flab-txt">Select an entity from Audit History or click "Investigate" on any detection card</div>
+          </div>
+          <div id="flab-content" class="flab-content" style="display:none;"></div>
+        </section>
+
+        <!-- LEGAL COMPLAINT GENERATOR -->
+        <section class="app-section" id="section-legal-complaint">
+
+          <!-- Scrollable content area: disclaimer + form -->
+          <div class="lc-scroll-area">
+
+          <!-- Disclaimer -->
+          <div class="lc-disclaimer">
+            <div class="lc-disc-icon">&#x26A0;&#xFE0F;</div>
+            <div class="lc-disc-text">
+              <strong>NOT LEGAL ADVICE.</strong>
+              This module generates a neutral, probabilistic platform-review request draft for informational purposes only.
+              It does not constitute a legal filing, formal complaint, or regulatory action of any kind.
+              All analysis results are probabilistic estimates from automated systems and may contain errors.
+              You are solely responsible for reviewing, editing, and deciding whether to submit this text.
+              Consult a qualified legal professional before taking any formal action.
+            </div>
+          </div>
+
+          <!-- Two-column layout: form | output -->
+          <div class="lc-layout">
+
+            <!-- LEFT: Input Form -->
+            <div class="panel">
+              <div class="panel-hdr">
+                <div class="panel-title">&#x1F4CB; Entity Details</div>
+                <span style="font-size:8px;color:#1e3347;">Fill in or pre-fill from a detected entity</span>
+              </div>
+
+              <!-- Pre-fill banner (shown when populated from another section) -->
+              <div class="lc-prefill-banner" id="lc-prefill-banner">
+                <span>&#x2714; Pre-filled from detected entity:</span>
+                <strong id="lc-prefill-label" style="color:#4facfe;"></strong>
+                <button class="lc-prefill-clear" id="lc-prefill-clear">&#x2715; Clear</button>
+              </div>
+
+              <div class="lc-form">
+                <div class="lc-row2">
+                  <div class="lc-field">
+                    <label class="lc-lbl">Entity Type</label>
+                    <select class="lc-select" id="lc-type">
+                      <option value="UNKNOWN">Unknown</option>
+                      <option value="IMAGE">Image</option>
+                      <option value="TEXT">Text / Article</option>
+                    </select>
+                  </div>
+                  <div class="lc-field">
+                    <label class="lc-lbl">Risk Verdict</label>
+                    <select class="lc-select" id="lc-risk">
+                      <option value="">Not set</option>
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="lc-field">
+                  <label class="lc-lbl">Source URL</label>
+                  <input class="lc-input" id="lc-url" type="text" placeholder="https://example.com/article" />
+                </div>
+
+                <div class="lc-field">
+                  <label class="lc-lbl">Content Title / Description</label>
+                  <input class="lc-input" id="lc-title" type="text" placeholder="Article headline or image description" />
+                </div>
+
+                <div class="lc-row3">
+                  <div class="lc-field">
+                    <label class="lc-lbl">AI Probability</label>
+                    <input class="lc-input" id="lc-ai-prob" type="number" min="0" max="1" step="0.01" placeholder="0.00–1.00" />
+                    <div class="lc-hint">0 = human, 1 = AI</div>
+                  </div>
+                  <div class="lc-field">
+                    <label class="lc-lbl">Fake / Synth %</label>
+                    <input class="lc-input" id="lc-fake-prob" type="number" min="0" max="1" step="0.01" placeholder="Image only" />
+                    <div class="lc-hint">0 = authentic, 1 = fake</div>
+                  </div>
+                  <div class="lc-field">
+                    <label class="lc-lbl">Credibility Score</label>
+                    <input class="lc-input" id="lc-cred" type="number" min="0" max="1" step="0.01" placeholder="0.00–1.00" />
+                    <div class="lc-hint">0 = low, 1 = high</div>
+                  </div>
+                </div>
+
+                <div class="lc-field">
+                  <label class="lc-lbl">Forensic Findings <span style="color:#1e3347;font-weight:400;">(one per line)</span></label>
+                  <textarea class="lc-textarea" id="lc-findings" placeholder="e.g.&#10;Inconsistent lighting detected&#10;Metadata timestamp anomaly"></textarea>
+                </div>
+
+                <div class="lc-field">
+                  <label class="lc-lbl">AI Summary <span style="color:#1e3347;font-weight:400;">(optional)</span></label>
+                  <textarea class="lc-textarea" style="min-height:52px;" id="lc-ai-summary" placeholder="Brief model-generated summary of the content"></textarea>
+                </div>
+
+                <div class="lc-field">
+                  <label class="lc-lbl">Key Claims <span style="color:#1e3347;font-weight:400;">(one per line)</span></label>
+                  <textarea class="lc-textarea" style="min-height:52px;" id="lc-claims" placeholder="e.g.&#10;Claim A&#10;Claim B"></textarea>
+                </div>
+              </div>
+
+              <div class="lc-gen-row">
+                <button class="lc-gen-btn" id="lc-gen-btn">
+                  <span class="lc-spin"></span>
+                  &#x1F4C4; Generate Complaint Draft
+                </button>
+                <span class="lc-status" id="lc-status"></span>
+              </div>
+            </div>
+
+            <!-- RIGHT: Output -->
+            <div class="panel">
+              <div class="panel-hdr">
+                <div class="panel-title">&#x1F4DD; Complaint Draft</div>
+                <span style="font-size:8px;color:#1e3347;">Review &amp; edit before use</span>
+              </div>
+              <div class="lc-output">
+
+                <!-- Placeholder before generation -->
+                <div class="lc-out-ph" id="lc-out-ph">
+                  <div class="lc-out-ph-icon">&#x2696;</div>
+                  <div class="lc-out-ph-txt">Fill in the entity details on the left<br>then click <strong style="color:#4facfe;">Generate Complaint Draft</strong></div>
+                </div>
+
+                <!-- Draft area (shown after generation) -->
+                <div class="lc-draft-wrap" id="lc-draft-wrap">
+                  <div class="lc-draft-lbl">
+                    <span class="lc-draft-lbl-text">Draft Text</span>
+                    <span class="lc-editable-badge">Editable — review before use</span>
+                  </div>
+                  <textarea class="lc-draft-ta" id="lc-draft-ta" spellcheck="true"></textarea>
+                  <div class="lc-action-row">
+                    <button class="lc-act-btn" id="lc-copy-btn">&#x1F4CB; Copy Text</button>
+                    <button class="lc-act-btn" id="lc-export-txt-btn">&#x2B07; Export .TXT</button>
+                    <button class="lc-act-btn json" id="lc-export-json-btn">&#x2B07; Export .JSON</button>
+                    <button class="lc-act-btn" id="lc-reset-btn" style="color:#3d5a73;margin-left:auto;">&#x21BA; Reset</button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+          </div><!-- /lc-scroll-area -->
+
+          <!-- AI Assistant Chat Panel (fixed height, always visible at bottom) -->
+          <div class="ai-chat-panel">
+            <div class="ai-chat-hdr">
+              <div class="ai-chat-hdr-left">
+                <span class="ai-chat-badge">&#x1F916; AI Assistant</span>
+                <span class="ai-chat-model">OpenRouter &mdash; Free Models</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="ai-ctx-toggle on" id="ai-ctx-toggle" title="Toggle: send current form data as context">&#x1F4CB; Use form context</button>
+                <button class="ai-chat-clear" id="ai-chat-clear">&#x21BA; Clear chat</button>
+              </div>
+            </div>
+            <div class="ai-chat-msgs" id="ai-chat-msgs">
+              <div class="ai-chat-empty" id="ai-chat-empty">
+                <div class="ai-chat-empty-icon">&#x1F916;</div>
+                Ask anything about this case, complaint filing,<br>platform policies, or forensic analysis results.
+              </div>
+            </div>
+            <div class="ai-chat-input-row">
+              <textarea class="ai-chat-input" id="ai-chat-input" rows="1"
+                placeholder="Ask e.g. &quot;How do I file a complaint with YouTube?&quot; or &quot;What does HIGH risk mean?&quot;"></textarea>
+              <button class="ai-chat-send" id="ai-chat-send">Send</button>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- AUDIT HISTORY -->
+        <section class="app-section" id="section-audit-history">
+          <div class="panel">
+            <div class="panel-hdr">
+              <div class="panel-title">Forensic Audit History</div>
+              <span style="font-size:8px;color:#2d4a62;" id="hist-count">0 records</span>
+              <button class="hist-view-btn" id="hist-view-all-btn">&#x1F4DC; View Full History</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="hist-table">
+                <thead>
+                  <tr><th>Time</th><th>Type</th><th>Source / Title</th><th>Risk</th><th>Score</th><th>Action</th></tr>
+                </thead>
+                <tbody id="hist-tbody">
+                  <tr><td colspan="6" class="ht-empty">No records yet. Browse the web or use Intel Analyst.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT PANEL: Console + Entity X Assistant -->
+      <div class="console-panel">
+        <!-- Tab strip -->
+        <div class="rp-tabbar">
+          <button class="rp-tab active" data-pane="rp-console">&#x25A4; Console</button>
+          <button class="rp-tab" data-pane="rp-chat">&#x2B21; Ask Entity X</button>
+          <button class="rp-tab" data-pane="rp-trust">&#x25F3; Trust</button>
+        </div>
+
+        <!-- Console pane -->
+        <div class="rp-pane active" id="rp-console">
+          <div class="console-body" id="console-body">
+            <div class="ce"><span class="ce-t">[init]</span><span class="c-success">&nbsp;Autonomous Monitoring v4.9 active on WEB.</span></div>
+          </div>
+        </div>
+
+        <!-- Entity X Chat pane -->
+        <div class="rp-pane" id="rp-chat">
+          <div class="xai-hdr">
+            <span class="xai-ctx-badge" id="xai-ctx-badge">No entity selected</span>
+            <button class="xai-clear" id="xai-clear">&#x21BA; Clear</button>
+          </div>
+          <div class="xai-msgs" id="xai-msgs">
+            <div class="xai-empty" id="xai-empty">
+              <div class="xai-empty-icon">&#x2B21;</div>
+              <strong style="font-size:10px;color:#2d4a62;letter-spacing:.06em;">ENTITY&nbsp;X</strong><br>
+              Your digital security advisor.<br>
+              Ask about flagged content, risk scores,<br>trust levels, or what to do next.
+            </div>
+          </div>
+          <div class="xai-input-row">
+            <textarea class="xai-input" id="xai-input" rows="1"
+              placeholder="&#x22;Why was this flagged?&#x22;  or  &#x22;What should I do?&#x22;"></textarea>
+            <button class="xai-send" id="xai-send">Send</button>
+          </div>
+        </div>
+
+        <!-- Trust Evolution pane -->
+        <div class="rp-pane" id="rp-trust">
+          <div class="te-wrap">
+            <div class="te-title-row">
+              <span class="te-title">Trust Evolution</span>
+              <span class="te-live-dot" title="Live — updates on every detection"></span>
+            </div>
+            <div class="te-canvas-wrap" id="te-canvas-wrap">
+              <canvas class="te-canvas" id="te-canvas"></canvas>
+            </div>
+            <div class="te-legend">
+              <div class="te-leg"><div class="te-leg-dot" style="background:#4ade80"></div>STABLE ≥80</div>
+              <div class="te-leg"><div class="te-leg-dot" style="background:#fbbf24"></div>WATCH ≥50</div>
+              <div class="te-leg"><div class="te-leg-dot" style="background:#ff6b6b"></div>ELEVATED &lt;50</div>
+            </div>
+          </div>
+        </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ENTITY VIEW OVERLAY (full-screen investigation mode, no new window) -->
+<div class="ev-overlay" id="ev-overlay">
+  <iframe id="ev-frame" src="" allowfullscreen></iframe>
+</div>
+
+<!-- HISTORY OVERLAY (full-screen global history view) -->
+<div class="hist-overlay" id="hist-overlay">
+  <iframe id="hist-frame" src="" allowfullscreen></iframe>
+</div>
+
+<script>
+  var totalCount=0,highCount=0,medCount=0,currentTrust=100,lmCount=0,ccCount=0,histCount=0;
+
+  var LABELS={'control-center':'CONTROL CENTER','live-monitor':'LIVE MONITOR','intel-analyst':'INTEL ANALYST','forensic-lab':'FORENSIC LAB','audit-history':'AUDIT HISTORY','legal-complaint':'LEGAL COMPLAINT GENERATOR'};
+  function navigateTo(id){
+    document.querySelectorAll('.app-section').forEach(function(s){s.classList.remove('active');});
+    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+    var s=document.getElementById('section-'+id); if(s) s.classList.add('active');
+    var n=document.querySelector('.nav-item[data-section="'+id+'"]'); if(n) n.classList.add('active');
+    document.getElementById('sectionLabel').textContent=LABELS[id]||id.toUpperCase();
+  }
+  document.querySelectorAll('.nav-item').forEach(function(el){
+    el.addEventListener('click',function(){navigateTo(el.dataset.section);});
+  });
+
+  document.querySelectorAll('.atab').forEach(function(tab){
+    tab.addEventListener('click',function(){
+      document.querySelectorAll('.atab').forEach(function(t){t.classList.remove('active');});
+      document.querySelectorAll('.atab-content').forEach(function(c){c.classList.remove('active');});
+      tab.classList.add('active');
+      var t=document.getElementById(tab.dataset.tab); if(t) t.classList.add('active');
+    });
+  });
+
+  function clog(msg,type){
+    type=type||'muted';
+    var body=document.getElementById('console-body');
+    var d=new Date();
+    var t=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    var el=document.createElement('div'); el.className='ce';
+    el.innerHTML='<span class="ce-t">['+t+']</span><span class="c-'+type+'">&nbsp;'+String(msg).replace(/</g,'&lt;').substring(0,120)+'</span>';
+    body.appendChild(el); body.scrollTop=body.scrollHeight;
+    while(body.children.length>300) body.removeChild(body.firstChild);
+  }
+  function pad(n){return n.toString().padStart(2,'0');}
+
+  function riskClass(r){
+    r=(r||'').toUpperCase();
+    return r==='HIGH'?'rhb':r==='MEDIUM'?'rmb':'rl';
+  }
+  function riskColor(r){
+    r=(r||'').toUpperCase();
+    return r==='HIGH'?'#ff6b6b':r==='MEDIUM'?'#fbbf24':'#4ade80';
+  }
+  function fmtTime(ts){
+    var d=new Date(ts||Date.now());
+    return pad(d.getHours())+':'+pad(d.getMinutes());
+  }
+  function scoreLabel(s){
+    if(!isFinite(s)) return 'UNKNOWN';
+    return s>=80?'STABLE':s>=50?'WATCH':'ELEVATED';
+  }
+  function getRisk(e){return e.entity_type==='TEXT'?e.misinformation_risk:e.risk_level;}
+  function getScore(e){
+    return e.entity_type==='TEXT'
+      ?((e.ai_generated_probability||0)*100).toFixed(1)+'%'
+      :((e.fake_probability||0)*100).toFixed(1)+'%';
+  }
+  function getTitle(e){
+    return e.entity_type==='TEXT'?(e.content_title||e.url||'Text Input').substring(0,60):'Image Scan';
+  }
+  function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function showForensicLab(entity){
+    var ph=document.getElementById('flab-ph'); var ct=document.getElementById('flab-content');
+    ph.style.display='none'; ct.style.display='flex';
+    var isT=entity.entity_type==='TEXT';
+    var risk=getRisk(entity);
+    var aiS=isT?((entity.ai_generated_probability||0)*100):((entity.fake_probability||0)*100);
+    var expl=entity.explanation||entity.forensic_explanation||[];
+    var explHtml=expl.length>0?'<ul>'+expl.map(function(e){return '<li>'+esc(e)+'</li>';}).join('')+'</ul>':'<div style="color:#1e3347;font-size:10px;margin-top:5px;">No evidence data.</div>';
+    ct.innerHTML=
+      '<div class="panel">'
+       +'<div class="panel-hdr"><div class="panel-title">'+(isT?'Text / Article':'Image')+' Forensic Report</div>'
+       +'<span class="badge '+riskClass(risk)+'" style="background:'+riskColor(risk)+'22;color:'+riskColor(risk)+'">'+esc(risk||'LOW')+'</span></div>'
+       +'<div class="panel-body">'
+       +'<div style="font-size:11px;color:#6a8fa8;margin-bottom:6px;word-break:break-all;">'+esc(isT?(entity.content_title||entity.url||'Manual Input'):(entity.image_url||'N/A'))+'</div>'
+       +'<div style="font-size:8px;color:#2d4a62;">Entity ID: <code style="color:#3d6a8a">'+esc(entity.entity_id||'?')+'</code> &nbsp;&#183;&nbsp; '+new Date(entity.detected_at||Date.now()).toLocaleTimeString()+'</div>'
+       +'</div></div>'
+      +'<div class="fmet-grid">'
+       +'<div class="fmet"><div class="fmet-val" style="color:'+(aiS>60?'#ff6b6b':aiS>30?'#fbbf24':'#4ade80')+'">'+aiS.toFixed(1)+'%</div><div class="fmet-lbl">'+(isT?'AI Generated':'Fake Probability')+'</div></div>'
+       +'<div class="fmet"><div class="fmet-val" style="color:'+riskColor(risk)+'">'+esc(risk||'LOW')+'</div><div class="fmet-lbl">'+(isT?'Misinfo Risk':'Risk Level')+'</div></div>'
+       +'<div class="fmet"><div class="fmet-val" style="color:'+((entity.trust_score||100)>=80?'#4ade80':(entity.trust_score||100)>=50?'#fbbf24':'#ff6b6b')+'">'+(entity.trust_score||100).toFixed(1)+'</div><div class="fmet-lbl">Trust Score</div></div>'
+       +(isT&&entity.credibility_score!==undefined?'<div class="fmet"><div class="fmet-val" style="color:#4facfe">'+((entity.credibility_score||0)*100).toFixed(1)+'%</div><div class="fmet-lbl">Credibility</div></div>':'')
+       +'</div>'
+      +'<div class="fevidence"><div class="panel-title" style="margin-bottom:5px;">Forensic Evidence</div>'+explHtml+'</div>'
+      // AI Summary panel — rendered only when Gemini data is present
+      +(isT&&entity.ai_summary
+        ?'<div class="panel"><div class="panel-hdr">'
+          +'<div class="panel-title">&#x2728; AI Summary'
+          +(entity.topic?' &mdash; <span style="font-weight:400;color:#4facfe;">'+esc(entity.topic)+'</span>':'')
+          +'</div><span style="font-size:8px;color:#2d4a62;">Gemini 1.5 Flash</span></div>'
+          +'<div class="panel-body">'
+          +'<div style="font-size:11px;color:#6a8fa8;line-height:1.6;margin-bottom:10px;">'+esc(entity.ai_summary)+'</div>'
+          +(entity.key_claims&&entity.key_claims.length
+            ?'<div style="font-size:8.5px;font-weight:700;color:#2d4a62;text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px;">Key Claims</div>'
+              +'<ul style="margin:0;padding-left:14px;display:flex;flex-direction:column;gap:5px;">'
+              +entity.key_claims.map(function(c){return '<li style="font-size:10.5px;color:#3d5a73;line-height:1.5;">'+esc(c)+'</li>';}).join('')
+              +'</ul>'
+            :'')
+          +'</div></div>'
+        :'');
+    navigateTo('forensic-lab');
+    // Add "Open Full Entity" button at the bottom of forensic lab
+    var ct=document.getElementById('flab-content');
+    var existingEvBtn=ct.querySelector('.flab-ev-btn'); if(existingEvBtn) existingEvBtn.remove();
+    var evBtn=document.createElement('button');
+    evBtn.className='app-btn btn-primary flab-ev-btn';
+    evBtn.style.cssText='margin-top:6px;align-self:flex-start;color:#c084fc;border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.08);';
+    evBtn.innerHTML='&#x2B21; Open Full Investigation Mode &#x2192;';
+    evBtn.addEventListener('click',function(){openEntityView(entity);});
+    ct.appendChild(evBtn);
+    // Add "Open in Legal Complaint Generator" button
+    var existingLcBtn=ct.querySelector('.flab-lc-btn'); if(existingLcBtn) existingLcBtn.remove();
+    var lcBtn=document.createElement('button');
+    lcBtn.className='app-btn btn-primary flab-lc-btn';
+    lcBtn.style.cssText='margin-top:0;align-self:flex-start;color:#fbbf24;border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06);';
+    lcBtn.innerHTML='&#x2696; Open in Legal Complaint Generator &#x2192;';
+    lcBtn.addEventListener('click',function(){openLegalSection(entity);});
+    ct.appendChild(lcBtn);
+  }
+
+  function addHistoryRow(entity){
+    histCount++;
+    document.getElementById('hist-count').textContent=histCount+' records';
+    var tbody=document.getElementById('hist-tbody');
+    var empty=tbody.querySelector('.ht-empty'); if(empty) empty.closest('tr').remove();
+    var risk=getRisk(entity); var score=getScore(entity); var isT=entity.entity_type==='TEXT';
+    var src=(isT?(entity.content_title||entity.url||'Text Input'):(entity.image_url||'')).substring(0,55);
+    var row=document.createElement('tr');
+    row.innerHTML='<td>'+fmtTime(entity.detected_at)+'</td>'
+      +'<td><span class="badge '+(isT?'et-txt':'et-img')+'" style="'+(isT?'background:rgba(192,132,252,.15);color:#c084fc':'background:rgba(79,172,254,.15);color:#4facfe')+'">'+esc(entity.entity_type)+'</span></td>'
+      +'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(src)+'">'+esc(src)+'</td>'
+      +'<td><span class="badge '+riskClass(risk)+'" style="background:'+riskColor(risk)+'22;color:'+riskColor(risk)+'">'+esc(risk||'LOW')+'</span></td>'
+      +'<td style="color:'+riskColor(risk)+';font-weight:700;">'+score+'</td>'
+      +'<td style="display:flex;gap:5px;align-items:center;"><button class="ht-link">Forensic Lab</button><button class="ht-link ht-full" style="color:#c084fc;border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.06);">Full View</button><button class="ht-link ht-legal" style="color:#fbbf24;border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05);">&#x2696; Legal</button></td>';
+    row.querySelector('.ht-link').addEventListener('click',function(){showForensicLab(entity);});
+    var fullBtn=row.querySelector('.ht-full'); if(fullBtn) fullBtn.addEventListener('click',function(){openEntityView(entity);});
+    var legalBtn=row.querySelector('.ht-legal'); if(legalBtn) legalBtn.addEventListener('click',function(){openLegalSection(entity);});
+    tbody.insertBefore(row,tbody.firstChild);
+  }
+
+  function addLMCard(entity){
+    var feed=document.getElementById('lm-feed');
+    var empty=feed.querySelector('.empty-state'); if(empty) empty.remove();
+    var risk=getRisk(entity); var score=getScore(entity); var isT=entity.entity_type==='TEXT';
+    var expl=entity.explanation||entity.forensic_explanation||[];
+    var explHtml=expl.length>0
+      ?'<details class="ev-details"><summary>&#x25B6;&#xFE0E; Details</summary><ul class="ev-expl">'+expl.map(function(e){return '<li>'+esc(e.toString().substring(0,90))+'</li>';}).join('')+'</ul></details>'
+      :'';
+    var thumbHtml=(!isT&&entity.image_url)
+      ?'<img class="ev-thumb" src="'+esc(entity.image_url)+'" onerror="this.outerHTML=\'<div class=\\"ev-thumb-ph\\">&#x1F5BC;</div>\'">'
+      :'<div class="ev-thumb-ph">'+(isT?'&#x1F4C4;':'&#x1F5BC;')+'</div>';
+    var card=document.createElement('div');
+    card.className='ev-card'+(risk==='HIGH'?' rh':risk==='MEDIUM'?' rm':'');
+    // AI summary block — only shown for TEXT entities when Gemini returned a result
+    var summaryHtml='';
+    if(isT&&entity.ai_summary){
+      summaryHtml='<div style="margin-top:5px;padding:5px 7px;background:rgba(79,172,254,.05);border-left:2px solid rgba(79,172,254,.3);border-radius:2px;">'
+        +(entity.topic?'<div style="font-size:7px;color:#4facfe;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">'+esc(entity.topic)+'</div>':'')
+        +'<div style="font-size:9px;color:#4a6a85;line-height:1.5;">'+esc(entity.ai_summary)+'</div>'
+        +(entity.key_claims&&entity.key_claims.length?'<details class="ev-details" style="margin-top:3px;"><summary style="font-size:8px;color:#3d5a73;">Key claims ('+entity.key_claims.length+')</summary><ul class="ev-expl">'
+          +entity.key_claims.map(function(c){return '<li>'+esc(c.toString().substring(0,100))+'</li>';}).join('')
+          +'</ul></details>':'')
+        +'</div>';
+    }
+    card.innerHTML='<div class="ev-top"><span class="ev-type '+(isT?'et-txt':'et-img')+'">'+ esc(entity.entity_type)+'</span><span class="ev-risk '+riskClass(risk)+'">'+esc(risk||'LOW')+'</span></div>'
+      +'<div class="ev-body">'+thumbHtml
+      +'<div class="ev-meta">'
+      +'<div class="ev-title">'+esc(getTitle(entity))+'</div>'
+      +'<div class="ev-score">Fake prob: '+score+'</div>'
+      +summaryHtml
+      +explHtml
+      +'</div></div>'
+      +'<button class="ev-btn">Investigate in Forensic Lab &#x2192;</button>';
+    card.querySelector('.ev-btn').addEventListener('click',function(){showForensicLab(entity);});
+    var evBtn=document.createElement('button'); evBtn.className='ev-open-btn'; evBtn.textContent='\u2B21 Open Full Investigation \u2192';
+    evBtn.addEventListener('click',function(){openEntityView(entity);});
+    card.appendChild(evBtn);
+    feed.insertBefore(card,feed.firstChild);
+    while(feed.children.length>60) feed.removeChild(feed.lastChild);
+    lmCount++; document.getElementById('lm-count').textContent=lmCount+' events';
+  }
+
+  function addCCRow(entity){
+    var feed=document.getElementById('cc-activity');
+    var empty=feed.querySelector('.empty-state'); if(empty) empty.remove();
+    var risk=getRisk(entity); var score=getScore(entity); var isT=entity.entity_type==='TEXT';
+    var row=document.createElement('div'); row.className='row-item';
+    row.innerHTML='<span style="color:#1e3347;font-size:8px;flex-shrink:0;">'+fmtTime(entity.detected_at)+'</span>'
+      +'<span class="badge '+(isT?'et-txt':'et-img')+'" style="'+(isT?'background:rgba(192,132,252,.14);color:#c084fc;':'background:rgba(79,172,254,.14);color:#4facfe;')+'font-size:7.5px;">'+esc(entity.entity_type)+'</span>'
+      +'<span style="flex:1;color:#3d5a73;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9.5px;">'+esc(getTitle(entity))+'</span>'
+      +'<span class="badge '+riskClass(risk)+'" style="background:'+riskColor(risk)+'22;color:'+riskColor(risk)+';font-size:7.5px;">'+esc(risk||'LOW')+'</span>'
+      +'<span style="color:'+riskColor(risk)+';font-size:9px;font-weight:700;">'+score+'</span>';
+    feed.insertBefore(row,feed.firstChild);
+    while(feed.children.length>25) feed.removeChild(feed.lastChild);
+    ccCount++; document.getElementById('cc-count').textContent=ccCount+' events';
+  }
+
+  function updateStats(entity){
+    totalCount++;
+    var risk=(getRisk(entity)||'').toUpperCase();
+    if(risk==='HIGH') highCount++;
+    if(risk==='MEDIUM') medCount++;
+    if(entity.trust_score!==undefined) currentTrust=entity.trust_score;
+    document.getElementById('cc-total').textContent=totalCount;
+    document.getElementById('cc-high').textContent=highCount;
+    document.getElementById('cc-medium').textContent=medCount;
+    var ts=document.getElementById('cc-trust');
+    ts.textContent=isFinite(currentTrust)?currentTrust.toFixed(1):'100.0';
+    ts.style.color=currentTrust>=80?'#4ade80':currentTrust>=50?'#fbbf24':'#ff6b6b';
+    document.getElementById('cc-trust-lbl').textContent=scoreLabel(currentTrust);
+    // Push point to Trust Evolution timeline
+    tePush(isFinite(currentTrust)?currentTrust:100, entity.detected_at||Date.now());
+  }
+
+  function ingestEntity(entity){
+    if(!entity||!entity.entity_id) return;
+    updateStats(entity); addHistoryRow(entity); addLMCard(entity); addCCRow(entity);
+    var risk=(getRisk(entity)||'').toUpperCase();
+    var lt=risk==='HIGH'?'danger':risk==='MEDIUM'?'warn':'success';
+    clog('['+entity.entity_type+'] '+risk+' | '+getTitle(entity),lt);
+    xaiSetEntity(entity);  // keep right-panel chat context up to date
+  }
+
+  if(window.imageMonitor&&window.imageMonitor.onAnalysis){
+    window.imageMonitor.onAnalysis(function(p){p.entity_type='IMAGE'; ingestEntity(p);});
+  }
+  if(window.textMonitor&&window.textMonitor.onAnalysis){
+    window.textMonitor.onAnalysis(function(p){if(!p.entity_type) p.entity_type='TEXT'; ingestEntity(p);});
+  }
+
+  var webview=document.getElementById('webview');
+  var addressBar=document.getElementById('addressBar');
+  document.getElementById('goBtn').addEventListener('click',function(){
+    var url=addressBar.value.trim();
+    if(!url.startsWith('http')) url='https://'+url;
+    webview.loadURL(url);
+  });
+  addressBar.addEventListener('keydown',function(e){if(e.key==='Enter') document.getElementById('goBtn').click();});
+  document.getElementById('backBtn').addEventListener('click',function(){webview.goBack();});
+  document.getElementById('forwardBtn').addEventListener('click',function(){webview.goForward();});
+  document.getElementById('reloadBtn').addEventListener('click',function(){webview.reload();});
+  webview.addEventListener('did-navigate',function(e){
+    addressBar.value=e.url;
+    clog('Nav: '+e.url.substring(0,60),'info');
+    /* Notify main to reset the image dedup cache for this new page */
+    if(window.entityX && window.entityX.sendNavigation) window.entityX.sendNavigation(e.url);
+  });
+
+  /* ── Webview → Main IPC bridge ──
+   * The webview-preload script sends ipcRenderer messages which arrive here
+   * as 'ipc-message' events.  We relay them to main process via the exposed
+   * entityX API so the backend can analyze detected content.
+   */
+  webview.addEventListener('ipc-message', function(e) {
+    if (e.channel === 'webview:image-url') {
+      var imgUrl = e.args && e.args[0];
+      if (imgUrl && window.entityX && window.entityX.sendImageUrl) {
+        window.entityX.sendImageUrl(imgUrl);
+      }
+    } else if (e.channel === 'webview:text-content') {
+      var textPayload = e.args && e.args[0];
+      if (textPayload && window.entityX && window.entityX.sendTextContent) {
+        window.entityX.sendTextContent(textPayload);
+      }
+    } else if (e.channel === 'webview-preload:loaded') {
+      clog('[ENTITY-X] Webview preload active.', 'success');
+    }
+  });
+
+  document.getElementById('analyze-url-btn').addEventListener('click',async function(){
+    var url=document.getElementById('url-input').value.trim();
+    if(!url){clog('No URL entered.','warn');return;}
+    var btn=document.getElementById('analyze-url-btn');
+    var spin=document.getElementById('url-spin');
+    btn.disabled=true; spin.style.display='inline-block';
+    clog('Analyzing URL: '+url.substring(0,60),'info');
+    try{
+      if(!window.entityX) throw new Error('entityX API not available — check preload.js');
+      var result=await window.entityX.analyzeUrl(url);
+      if(result&&result.success&&result.entity){
+        ingestEntity(result.entity); renderResult(result.entity,'url-result');
+        clog('URL analysis complete. Risk: '+getRisk(result.entity),'success');
+      } else {
+        showErr('url-result',(result&&result.error)||'Analysis failed. Is the backend running?');
+        clog('URL analysis failed.','danger');
+      }
+    }catch(e){showErr('url-result',e.message); clog('Error: '+e.message,'danger');}
+    finally{btn.disabled=false; spin.style.display='none';}
+  });
+
+  document.getElementById('analyze-text-btn').addEventListener('click',async function(){
+    var text=document.getElementById('text-input').value.trim();
+    var title=document.getElementById('text-title').value.trim();
+    if(!text||text.split(/\s+/).length<10){clog('Text too short (min 10 words).','warn');return;}
+    var btn=document.getElementById('analyze-text-btn');
+    var spin=document.getElementById('text-spin');
+    btn.disabled=true; spin.style.display='inline-block';
+    clog('Analyzing text ('+text.split(/\s+/).length+' words)...','info');
+    try{
+      if(!window.entityX) throw new Error('entityX API not available — check preload.js');
+      var result=await window.entityX.analyzeText({text:text,title:title});
+      if(result&&result.success&&result.entity){
+        ingestEntity(result.entity); renderResult(result.entity,'text-result');
+        clog('Text analysis done. Risk: '+getRisk(result.entity),'success');
+      } else {
+        showErr('text-result',(result&&result.error)||'Analysis failed. Is the backend running?');
+        clog('Text analysis failed.','danger');
+      }
+    }catch(e){showErr('text-result',e.message); clog('Error: '+e.message,'danger');}
+    finally{btn.disabled=false; spin.style.display='none';}
+  });
+
+  function showErr(id,msg){
+    var el=document.getElementById(id);
+    el.innerHTML='<div style="color:#ff6b6b;font-size:10px;">'+esc(msg)+'</div>';
+    el.classList.add('visible');
+  }
+
+  function renderResult(entity,containerId){
+    var el=document.getElementById(containerId);
+    var isT=entity.entity_type==='TEXT';
+    var risk=getRisk(entity);
+    var aiS=isT?((entity.ai_generated_probability||0)*100):((entity.fake_probability||0)*100);
+    var expl=entity.explanation||entity.forensic_explanation||[];
+    // Gemini summary block shown when available
+    var geminiHtml='';
+    if(isT&&entity.ai_summary){
+      var claimsHtml='';
+      if(entity.key_claims&&entity.key_claims.length){
+        claimsHtml='<div style="font-size:8px;color:#3d5a73;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Key Claims</div>'
+          +'<ul style="margin:0;padding-left:14px;">'
+          +entity.key_claims.map(function(c){return '<li style="font-size:10px;color:#3d5a73;margin-bottom:3px;line-height:1.5;">'+esc(c)+'</li>';}).join('')
+          +'</ul>';
+      }
+      geminiHtml='<div style="margin-top:10px;padding:10px;background:rgba(79,172,254,.05);border:1px solid rgba(79,172,254,.15);border-radius:5px;">'
+        +'<div style="font-size:8px;font-weight:700;color:#4facfe;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px;">&#x2728; AI Summary'
+        +(entity.topic?' &mdash; '+esc(entity.topic):'')
+        +' <span style="font-weight:400;color:#2d4a62;font-size:7.5px;">(Gemini 2.0 Flash)</span></div>'
+        +'<div style="font-size:10.5px;color:#6a8fa8;line-height:1.6;margin-bottom:6px;">'+esc(entity.ai_summary)+'</div>'
+        +claimsHtml
+        +'</div>';
+    }
+    el.innerHTML=
+      '<div style="display:flex;align-items:center;gap:7px;margin-bottom:2px;">'
+       +'<span class="badge '+riskClass(risk)+'" style="background:'+riskColor(risk)+'22;color:'+riskColor(risk)+'">'+esc(risk||'LOW')+' RISK</span>'
+       +(isT?'<span style="font-size:7.5px;color:#2d4a62;">Credibility: '+((entity.credibility_score||0)*100).toFixed(0)+'%</span>':'')
+       +(isT&&entity.topic?'<span style="font-size:7.5px;color:#4facfe;padding:1.5px 5px;background:rgba(79,172,254,.1);border-radius:3px;">'+esc(entity.topic)+'</span>':'')
+       +'</div>'
+      +'<div class="rmet-grid">'
+       +'<div class="rmet"><div class="rmet-val" style="color:'+(aiS>60?'#ff6b6b':aiS>30?'#fbbf24':'#4ade80')+'">'+aiS.toFixed(1)+'%</div><div class="rmet-lbl">'+(isT?'AI Generated':'Fake Prob.')+'</div></div>'
+       +'<div class="rmet"><div class="rmet-val" style="color:'+riskColor(risk)+'">'+esc(risk||'LOW')+'</div><div class="rmet-lbl">'+(isT?'Misinfo Risk':'Risk Level')+'</div></div>'
+       +'<div class="rmet"><div class="rmet-val" style="color:'+((entity.trust_score||100)>=80?'#4ade80':(entity.trust_score||100)>=50?'#fbbf24':'#ff6b6b')+'">'+(entity.trust_score||100).toFixed(0)+'</div><div class="rmet-lbl">Trust Score</div></div>'
+       +'</div>'
+      +geminiHtml
+      +(expl.length>0?'<div class="rexpl"><ul>'+expl.map(function(e){return '<li>'+esc(e)+'</li>';}).join('')+'</ul></div>':'')
+      +'<button class="rview-btn">Open in Forensic Lab &#x2192;</button>';
+    el.classList.add('visible');
+    el.querySelector('.rview-btn').addEventListener('click',function(){showForensicLab(entity);});
+    // Add Full Investigation button to Intel Analyst results
+    var existingEvBtn=el.querySelector('.rintel-ev-btn'); if(existingEvBtn) existingEvBtn.remove();
+    var evBtn=document.createElement('button');
+    evBtn.className='app-btn btn-primary rintel-ev-btn';
+    evBtn.style.cssText='margin-top:4px;font-size:9px;color:#c084fc;border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.08);';
+    evBtn.innerHTML='&#x2B21; Full Investigation &#x2192;';
+    evBtn.addEventListener('click',function(){openEntityView(entity);});
+    el.appendChild(evBtn);
+  }
+
+  /* ── ENTITY VIEW (Full Investigation Mode) ── */
+  var _evEntity = null;
+  var _evFrameReady = false;
+  var _evPendingLoad = null;
+
+  /* ── History View ── */
+  var _histFrameReady = false;
+
+  function openHistoryView(filters) {
+    var overlay = document.getElementById('hist-overlay');
+    var frame   = document.getElementById('hist-frame');
+    overlay.classList.add('open');
+    overlay.classList.remove('hist-overlay-enter');
+    void overlay.offsetWidth;
+    overlay.classList.add('hist-overlay-enter');
+    clog('[HISTORY] Opening global history view', 'info');
+    if (frame.src && frame.src.indexOf('history.html') !== -1 && _histFrameReady) {
+      frame.contentWindow.postMessage({ type: 'hist:load', filters: filters || {} }, '*');
+    } else {
+      _histFrameReady = false;
+      _histPendingFilters = filters || null;
+      frame.src = 'history.html';
+    }
+  }
+
+  var _histPendingFilters = null;
+
+  function closeHistoryView() {
+    var overlay = document.getElementById('hist-overlay');
+    overlay.classList.remove('open');
+    _histFrameReady = false;
+    clog('[HISTORY] History view closed.', 'muted');
+  }
+
+  document.getElementById('hist-view-all-btn').addEventListener('click', function() {
+    openHistoryView({});
+  });
+
+  function openEntityView(entity) {
+    _evEntity = entity;
+    var overlay = document.getElementById('ev-overlay');
+    var frame = document.getElementById('ev-frame');
+    overlay.classList.add('open');
+    overlay.classList.remove('ev-overlay-enter');
+    void overlay.offsetWidth; // force reflow for animation
+    overlay.classList.add('ev-overlay-enter');
+    clog('[ENTITY-VIEW] Opening investigation for: '+getTitle(entity),'info');
+
+    if (frame.src && frame.src.indexOf('entity-view.html') !== -1 && _evFrameReady) {
+      // Frame already loaded — just send the entity data
+      frame.contentWindow.postMessage({ type: 'ev:load', entity: entity }, '*');
+    } else {
+      // First load — set src and queue data for when ready signal arrives
+      _evFrameReady = false;
+      _evPendingLoad = entity;
+      frame.src = 'entity-view.html';
+    }
+    xaiSetEntity(entity);  // prime right-panel chat with this entity's context
+  }
+
+  function closeEntityView() {
+    var overlay = document.getElementById('ev-overlay');
+    overlay.classList.remove('open');
+    _evFrameReady = false; // reset so next open re-checks
+    clog('[ENTITY-VIEW] Investigation mode closed.','muted');
+  }
+
+  // Listen for messages from entity-view + history iframes
+  window.addEventListener('message', function(evt) {
+    if (!evt.data || typeof evt.data.type !== 'string') return;
+    var frame = document.getElementById('ev-frame');
+    var hframe = document.getElementById('hist-frame');
+    switch (evt.data.type) {
+
+      /* ── History iframe messages ── */
+      case 'hist:ready':
+        _histFrameReady = true;
+        if (_histPendingFilters !== null) {
+          hframe.contentWindow.postMessage({ type: 'hist:load', filters: _histPendingFilters }, '*');
+          _histPendingFilters = null;
+        } else {
+          hframe.contentWindow.postMessage({ type: 'hist:load', filters: {} }, '*');
+        }
+        break;
+      case 'hist:fetch':
+        (async function() {
+          try {
+            var result = await window.entityX.getHistory(evt.data.filters || {});
+            hframe.contentWindow.postMessage({ type: 'hist:data', records: result.records || [], total: result.total || 0 }, '*');
+          } catch(e) {
+            hframe.contentWindow.postMessage({ type: 'hist:data', records: [], total: 0 }, '*');
+          }
+        })();
+        break;
+      case 'hist:close':
+        closeHistoryView();
+        break;
+      case 'hist:open-entity':
+        /* Look up entity from cache and open entity-view */
+        if (evt.data.entityId && window.entityView) {
+          window.entityView.getDetails(evt.data.entityId).then(function(entity) {
+            if (entity) { closeHistoryView(); openEntityView(entity); }
+            else clog('[HISTORY] Entity '+evt.data.entityId+' not in cache','warn');
+          });
+        }
+        break;
+      case 'hist:open-url':
+        if (evt.data.url) {
+          var wv2 = document.getElementById('webview');
+          var ab2 = document.getElementById('addressBar');
+          if (wv2 && ab2) {
+            ab2.value = evt.data.url;
+            wv2.loadURL(evt.data.url);
+            closeHistoryView();
+            navigateTo('live-monitor');
+          }
+        }
+        break;
+
+      /* ── Legal Complaint Generator ── */
+      case 'ev:legal-generate':
+        (async function() {
+          var evf = document.getElementById('ev-frame');
+          if (!evf) return;
+          try {
+            var result = await window.entityX.generateLegal(evt.data.payload || {});
+            evf.contentWindow.postMessage({ type: 'ev:legal-result', result: result }, '*');
+          } catch(e) {
+            evf.contentWindow.postMessage({ type: 'ev:legal-result', result: { error: e.message } }, '*');
+          }
+        })();
+        break;
+
+      /* ── Legal Awareness Chat ── */
+      case 'ev:legal-chat-query':
+        (async function() {
+          var evf = document.getElementById('ev-frame');
+          if (!evf) return;
+          try {
+            var result = await window.entityX.legalChatQuery(evt.data.payload || {});
+            evf.contentWindow.postMessage({ type: 'ev:legal-chat-result', result: result }, '*');
+          } catch(e) {
+            evf.contentWindow.postMessage({ type: 'ev:legal-chat-result', result: { error: e.message } }, '*');
+          }
+        })();
+        break;
+
+      /* ── Legal Chat History (read-only, from SQLite) ── */
+      case 'ev:legal-chat-history':
+        (async function() {
+          var evf = document.getElementById('ev-frame');
+          if (!evf) return;
+          try {
+            var history = await window.entityX.legalChatHistory(evt.data.entity_id || '');
+            evf.contentWindow.postMessage({ type: 'ev:legal-chat-history-result', history: history || [] }, '*');
+          } catch(e) {
+            evf.contentWindow.postMessage({ type: 'ev:legal-chat-history-result', history: [] }, '*');
+          }
+        })();
+        break;
+
+      /* ── Entity-view iframe messages ── */
+      case 'ev:ready':
+        // iframe loaded and ready — send pending entity data
+        _evFrameReady = true;
+        if (_evPendingLoad) {
+          frame.contentWindow.postMessage({ type: 'ev:load', entity: _evPendingLoad }, '*');
+          _evPendingLoad = null;
+        }
+        break;
+      case 'ev:close':
+        closeEntityView();
+        break;
+      case 'ev:export-pdf':
+        /* Relay entity payload to main process via IPC, return result to iframe */
+        (async function() {
+          var evf = document.getElementById('ev-frame');
+          if (!evf) return;
+          try {
+            var result = await window.entityX.exportPdf(evt.data.payload || {});
+            evf.contentWindow.postMessage({ type: 'ev:export-pdf-result', result: result }, '*');
+          } catch(e) {
+            evf.contentWindow.postMessage({ type: 'ev:export-pdf-result', result: { error: e.message } }, '*');
+          }
+        })();
+        break;
+      case 'ev:open-url':
+        // Load URL in the Live Monitor webview
+        if (evt.data.url) {
+          var wv = document.getElementById('webview');
+          var ab = document.getElementById('addressBar');
+          if (wv && ab) {
+            ab.value = evt.data.url;
+            wv.loadURL(evt.data.url);
+            closeEntityView();
+            navigateTo('live-monitor');
+            clog('[ENTITY-VIEW] Navigating webview to: '+evt.data.url.substring(0,60),'info');
+          }
+        }
+        break;
+    }
+  });
+
+  clog('Entity X ready. All systems nominal.','success');
+
+  /* ══════════════════════════════════════════════════
+   * LEGAL COMPLAINT GENERATOR — Section Logic
+   * ══════════════════════════════════════════════════ */
+  var _lcEvidenceJson = null; // holds last evidence_summary for JSON export
+
+  /* ─ helper: read form into payload object ─ */
+  function lcReadForm() {
+    function v(id) { return (document.getElementById(id)||{}).value||''; }
+    function n(id) { var val = parseFloat(v(id)); return isNaN(val) ? null : Math.min(1, Math.max(0, val)); }
+    var findings = v('lc-findings').split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    var claims   = v('lc-claims').split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    return {
+      entity_id:   'manual-' + Date.now().toString(16).slice(-8),
+      entity_type: v('lc-type') || 'UNKNOWN',
+      source_url:  v('lc-url'),
+      content_title: v('lc-title'),
+      misinformation_risk:       v('lc-risk') || null,
+      ai_generated_probability:  n('lc-ai-prob'),
+      fake_probability:          n('lc-fake-prob'),
+      credibility_score:         n('lc-cred'),
+      forensic_findings:         findings,
+      ai_summary:                v('lc-ai-summary') || null,
+      key_claims:                claims,
+      trust_score_delta:         null,
+      detected_at:               Date.now()
+    };
+  }
+
+  /* ─ helper: flash a button briefly ─ */
+  function lcFlashBtn(btn, html, ms) {
+    var orig = btn.innerHTML;
+    btn.innerHTML = html;
+    btn.classList.add('success-flash');
+    setTimeout(function() { btn.innerHTML = orig; btn.classList.remove('success-flash'); }, ms||2000);
+  }
+
+  /* ─ helper: trigger file download ─ */
+  function lcDownload(text, filename, mime) {
+    var blob = new Blob([text], {type: mime});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = filename; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+  }
+
+  /* ─ helper: copy text to clipboard ─ */
+  function lcCopy(text, btn) {
+    var done = function(){ lcFlashBtn(btn, '&#x2714; Copied!', 2200); };
+    try {
+      if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done).catch(function(){ lcFallbackCopy(text); done(); }); }
+      else { lcFallbackCopy(text); done(); }
+    } catch(e) { lcFallbackCopy(text); done(); }
+  }
+  function lcFallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;opacity:0;';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  /* ─ show draft outputpanel ─ */
+  function lcShowDraft(draftText, evidenceSummary) {
+    document.getElementById('lc-out-ph').style.display   = 'none';
+    var wrap = document.getElementById('lc-draft-wrap');
+    wrap.classList.add('visible');
+    document.getElementById('lc-draft-ta').value = draftText;
+    _lcEvidenceJson = evidenceSummary || null;
+    var jsonBtn = document.getElementById('lc-export-json-btn');
+    if (jsonBtn && _lcEvidenceJson) jsonBtn.dataset.ready = '1';
+  }
+
+  /* ─ reset the section to blank state ─ */
+  function lcReset() {
+    ['lc-url','lc-title','lc-findings','lc-ai-summary','lc-claims','lc-ai-prob','lc-fake-prob','lc-cred'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('lc-type').value = 'UNKNOWN';
+    document.getElementById('lc-risk').value = '';
+    document.getElementById('lc-out-ph').style.display = '';
+    document.getElementById('lc-draft-wrap').classList.remove('visible');
+    document.getElementById('lc-draft-ta').value = '';
+    document.getElementById('lc-status').textContent = '';
+    document.getElementById('lc-prefill-banner').classList.remove('visible');
+    _lcEvidenceJson = null;
+    var btn = document.getElementById('lc-gen-btn');
+    btn.disabled = false; btn.classList.remove('generating');
+    clog('[LEGAL] Form reset.', 'muted');
+  }
+
+  /* ─ pre-fill form from a detected entity object ─ */
+  function openLegalSection(entity) {
+    navigateTo('legal-complaint');
+    var isText = (entity.entity_type||'').toUpperCase() === 'TEXT';
+    document.getElementById('lc-type').value = entity.entity_type || 'UNKNOWN';
+    document.getElementById('lc-url').value  = (isText ? entity.url : entity.image_url) || '';
+    document.getElementById('lc-title').value = (isText ? entity.content_title : 'Image Entity') || '';
+    document.getElementById('lc-risk').value = (entity.misinformation_risk || entity.risk_level || '');
+    var aiProb = isText ? entity.ai_generated_probability : null;
+    if (aiProb != null) document.getElementById('lc-ai-prob').value = aiProb.toFixed(4);
+    var fakeProb = !isText ? entity.fake_probability : null;
+    if (fakeProb != null) document.getElementById('lc-fake-prob').value = fakeProb.toFixed(4);
+    if (entity.credibility_score != null) document.getElementById('lc-cred').value = entity.credibility_score.toFixed(4);
+    var findings = (entity.explanation || entity.forensic_explanation || []);
+    document.getElementById('lc-findings').value = findings.join('\n');
+    if (entity.ai_summary) document.getElementById('lc-ai-summary').value = entity.ai_summary;
+    if (entity.key_claims && entity.key_claims.length) document.getElementById('lc-claims').value = entity.key_claims.join('\n');
+    /* show pre-fill banner */
+    var banner = document.getElementById('lc-prefill-banner');
+    var lbl    = document.getElementById('lc-prefill-label');
+    banner.classList.add('visible');
+    lbl.textContent = entity.content_title || entity.url || entity.image_url || entity.entity_id || 'entity';
+    /* reset output pane */
+    document.getElementById('lc-out-ph').style.display = '';
+    document.getElementById('lc-draft-wrap').classList.remove('visible');
+    document.getElementById('lc-status').textContent = '';
+    clog('[LEGAL] Form pre-filled from entity: ' + (entity.entity_id || '?'), 'info');
+  }
+
+  /* ─ Generate button ─ */
+  document.getElementById('lc-gen-btn').addEventListener('click', async function() {
+    var btn    = this;
+    var status = document.getElementById('lc-status');
+    var payload = lcReadForm();
+    if (!payload.source_url && !payload.content_title) {
+      status.textContent = 'Please enter at least a Source URL or Title.';
+      status.style.color = '#ff6b6b';
+      return;
+    }
+    btn.disabled = true;
+    btn.classList.add('generating');
+    status.textContent = 'Generating draft…';
+    status.style.color = '#4facfe';
+    clog('[LEGAL] Generating complaint draft for: ' + (payload.source_url||payload.content_title).substring(0,60), 'info');
+    try {
+      var result = await window.entityX.generateLegal(payload);
+      if (result.error) {
+        status.textContent = 'Error: ' + result.error;
+        status.style.color = '#ff6b6b';
+        clog('[LEGAL] Generation error: ' + result.error, 'warn');
+      } else {
+        status.textContent = 'Draft ready — review and edit before submitting.';
+        status.style.color = '#4ade80';
+        lcShowDraft(result.complaint_draft || '', result.evidence_summary || null);
+        clog('[LEGAL] Complaint draft generated successfully.', 'success');
+      }
+    } catch(e) {
+      status.textContent = 'Unexpected error: ' + e.message;
+      status.style.color = '#ff6b6b';
+      clog('[LEGAL] Exception: ' + e.message, 'danger');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('generating');
+    }
+  });
+
+  /* ─ Copy Draft ─ */
+  document.getElementById('lc-copy-btn').addEventListener('click', function() {
+    var text = document.getElementById('lc-draft-ta').value;
+    if (text) lcCopy(text, this);
+  });
+
+  /* ─ Export TXT ─ */
+  document.getElementById('lc-export-txt-btn').addEventListener('click', function() {
+    var text = document.getElementById('lc-draft-ta').value;
+    if (!text) return;
+    var ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    lcDownload(text, 'entity-x-complaint-' + ts + '.txt', 'text/plain');
+    lcFlashBtn(this, '&#x2714; Saved', 1800);
+  });
+
+  /* ─ Export JSON ─ */
+  document.getElementById('lc-export-json-btn').addEventListener('click', function() {
+    var text = document.getElementById('lc-draft-ta').value;
+    if (!text) return;
+    var obj = {
+      complaint_draft:  text,
+      evidence_summary: _lcEvidenceJson || {},
+      exported_at:      new Date().toISOString(),
+      disclaimer:       'NOT LEGAL ADVICE — probabilistic analysis output only. Review before use.'
+    };
+    var ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    lcDownload(JSON.stringify(obj, null, 2), 'entity-x-complaint-' + ts + '.json', 'application/json');
+    lcFlashBtn(this, '&#x2714; Saved', 1800);
+  });
+
+  /* ─ Reset ─ */
+  document.getElementById('lc-reset-btn').addEventListener('click', function() { lcReset(); });
+
+  /* ─ Clear pre-fill ─ */
+  document.getElementById('lc-prefill-clear').addEventListener('click', function() { lcReset(); });
+
+  /* ══════════════════════════════════════════════════
+   * AI CHAT ASSISTANT — Legal Complaint Section
+   * ══════════════════════════════════════════════════ */
+  var _aiMessages = [];          // conversation history [{role, content}]
+  var _aiCtxEnabled = true;      // whether to send form context
+
+  /* Toggle context on/off */
+  document.getElementById('ai-ctx-toggle').addEventListener('click', function() {
+    _aiCtxEnabled = !_aiCtxEnabled;
+    this.classList.toggle('on', _aiCtxEnabled);
+    this.innerHTML = _aiCtxEnabled ? '&#x1F4CB; Use form context' : '&#x1F4CB; No context';
+  });
+
+  /* Clear chat history */
+  document.getElementById('ai-chat-clear').addEventListener('click', function() {
+    _aiMessages = [];
+    var msgs = document.getElementById('ai-chat-msgs');
+    msgs.innerHTML = '<div class="ai-chat-empty" id="ai-chat-empty">'
+      + '<div class="ai-chat-empty-icon">&#x1F916;</div>'
+      + 'Ask anything about this case, complaint filing,<br>platform policies, or forensic analysis results.</div>';
+  });
+
+  /* Auto-grow textarea */
+  document.getElementById('ai-chat-input').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 90) + 'px';
+  });
+
+  /* Send on Enter (Shift+Enter = newline) */
+  document.getElementById('ai-chat-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('ai-chat-send').click(); }
+  });
+
+  function aiAppendMsg(role, text) {
+    var msgs = document.getElementById('ai-chat-msgs');
+    var empty = document.getElementById('ai-chat-empty');
+    if (empty) empty.remove();
+    var div = document.createElement('div');
+    div.className = 'ai-msg ' + role;
+    div.innerHTML = '<div class="ai-msg-lbl">' + (role === 'user' ? 'You' : 'AI Assistant') + '</div>'
+      + '<div class="ai-msg-bubble">' + esc(text) + '</div>';
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
+
+  function aiShowThinking() {
+    var msgs = document.getElementById('ai-chat-msgs');
+    var div = document.createElement('div');
+    div.className = 'ai-chat-thinking'; div.id = 'ai-thinking';
+    div.innerHTML = '<span class="spinner"></span> AI is thinking&hellip;';
+    msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function aiHideThinking() {
+    var t = document.getElementById('ai-thinking'); if (t) t.remove();
+  }
+
+  document.getElementById('ai-chat-send').addEventListener('click', async function() {
+    var input = document.getElementById('ai-chat-input');
+    var text  = input.value.trim();
+    if (!text) return;
+
+    // Append user message to DOM + history
+    aiAppendMsg('user', text);
+    _aiMessages.push({ role: 'user', content: text });
+    input.value = ''; input.style.height = 'auto';
+
+    var sendBtn = this;
+    sendBtn.disabled = true;
+    aiShowThinking();
+
+    try {
+      if (!window.entityX || !window.entityX.aiChat) throw new Error('AI Chat API not available. Check preload.js.');
+
+      // Optionally build context from the form
+      var ctx = null;
+      if (_aiCtxEnabled) {
+        ctx = lcReadForm();
+        // Trim heavy fields to keep the context compact
+        if (ctx.forensic_findings && ctx.forensic_findings.length > 8)
+          ctx.forensic_findings = ctx.forensic_findings.slice(0, 8);
+        if (ctx.key_claims && ctx.key_claims.length > 5)
+          ctx.key_claims = ctx.key_claims.slice(0, 5);
+      }
+
+      // Send last 12 messages max to keep tokens low
+      var recentMsgs = _aiMessages.slice(-12);
+      var result = await window.entityX.aiChat(recentMsgs, ctx);
+
+      aiHideThinking();
+
+      if (result.error) {
+        var errText = 'Error: ' + result.error;
+        aiAppendMsg('assistant', errText);
+        _aiMessages.push({ role: 'assistant', content: errText });
+        clog('[AI-CHAT] Error: ' + result.error, 'warn');
+      } else {
+        aiAppendMsg('assistant', result.response || '(no response)');
+        _aiMessages.push({ role: 'assistant', content: result.response || '' });
+        clog('[AI-CHAT] Response received.', 'success');
+      }
+    } catch(e) {
+      aiHideThinking();
+      aiAppendMsg('assistant', 'Unexpected error: ' + e.message);
+      clog('[AI-CHAT] Exception: ' + e.message, 'danger');
+    } finally {
+      sendBtn.disabled = false;
+      document.getElementById('ai-chat-msgs').scrollTop = 99999;
+    }
+  });
+  /* ══════════════════════════════════════════════════
+   * END AI CHAT ASSISTANT
+   * ══════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════
+   * END LEGAL COMPLAINT GENERATOR
+   * ══════════════════════════════════════════════════ */
+
+  /* ══════════════════════════════════════════════════
+   * ENTITY X AI ASSISTANT — Right Panel
+   *
+   * "Entity X performs continuous, silent, background
+   * monitoring and assists users through explainable,
+   * ethical AI guidance."
+   *
+   * Role: calm, factual, non-alarmist digital security
+   * advisor. Explains detected data only — no scanning,
+   * no accusations, no legal advice, no auto-actions.
+   * ══════════════════════════════════════════════════ */
+  var _xaiMessages      = [];    // conversation history [{role, content}]
+  var _xaiCurrentEntity = null;  // last known entity for context injection
+
+  /* ── right-panel tab switching ── */
+  document.querySelectorAll('.rp-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.rp-tab').forEach(function(t){ t.classList.remove('active'); });
+      document.querySelectorAll('.rp-pane').forEach(function(p){ p.classList.remove('active'); });
+      tab.classList.add('active');
+      var pane = document.getElementById(tab.dataset.pane);
+      if (pane) pane.classList.add('active');
+    });
+  });
+
+  /**
+   * Prime the chat context badge with the currently selected entity.
+   * Called automatically by ingestEntity() and openEntityView().
+   */
+  function xaiSetEntity(entity) {
+    _xaiCurrentEntity = entity || null;
+    var badge = document.getElementById('xai-ctx-badge');
+    if (!badge) return;
+    if (!entity) {
+      badge.textContent = 'No entity selected';
+      badge.classList.remove('entity');
+    } else {
+      var isT = entity.entity_type === 'TEXT';
+      var lbl = isT ? (entity.content_title || entity.url || 'Text Entity') : 'Image Entity';
+      badge.textContent = '\u25C8 ' + lbl.substring(0, 26);
+      badge.classList.add('entity');
+    }
+  }
+
+  /* ── append a chat bubble ── */
+  function xaiAppend(role, text) {
+    var msgs  = document.getElementById('xai-msgs');
+    var empty = document.getElementById('xai-empty');
+    if (empty) empty.remove();
+    var div = document.createElement('div');
+    div.className = 'xai-msg ' + role;
+    div.innerHTML = '<div class="xai-msg-lbl">' + (role === 'user' ? 'You' : 'Entity X') + '</div>'
+      + '<div class="xai-bubble">' + esc(text) + '</div>';
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function xaiThinkShow() {
+    var msgs = document.getElementById('xai-msgs');
+    var el = document.createElement('div');
+    el.className = 'xai-thinking'; el.id = 'xai-thinking';
+    el.innerHTML = '<span class="spinner"></span>Entity X is thinking\u2026';
+    msgs.appendChild(el); msgs.scrollTop = msgs.scrollHeight;
+  }
+  function xaiThinkHide() { var t = document.getElementById('xai-thinking'); if (t) t.remove(); }
+
+  /* ── clear chat ── */
+  document.getElementById('xai-clear').addEventListener('click', function() {
+    _xaiMessages = [];
+    document.getElementById('xai-msgs').innerHTML =
+      '<div class="xai-empty" id="xai-empty">'
+      + '<div class="xai-empty-icon">&#x2B21;</div>'
+      + '<strong style="font-size:10px;color:#2d4a62;letter-spacing:.06em;">ENTITY\u00A0X</strong><br>'
+      + 'Your digital security advisor.<br>'
+      + 'Ask about flagged content, risk scores,<br>trust levels, or what to do next.'
+      + '</div>';
+  });
+
+  /* ── auto-grow textarea ── */
+  document.getElementById('xai-input').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+  });
+
+  /* ── Enter to send, Shift+Enter for newline ── */
+  document.getElementById('xai-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('xai-send').click(); }
+  });
+
+  /* ── send handler ── */
+  document.getElementById('xai-send').addEventListener('click', async function() {
+    var input = document.getElementById('xai-input');
+    var text  = input.value.trim();
+    if (!text) return;
+
+    xaiAppend('user', text);
+    _xaiMessages.push({ role: 'user', content: text });
+    input.value = ''; input.style.height = 'auto';
+
+    var btn = this; btn.disabled = true;
+    xaiThinkShow();
+
+    // Switch to chat pane automatically if the user typed here
+    document.querySelectorAll('.rp-tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.rp-pane').forEach(function(p){ p.classList.remove('active'); });
+    var chatTab  = document.querySelector('.rp-tab[data-pane="rp-chat"]');
+    var chatPane = document.getElementById('rp-chat');
+    if (chatTab)  chatTab.classList.add('active');
+    if (chatPane) chatPane.classList.add('active');
+
+    try {
+      if (!window.entityX || !window.entityX.aiChat)
+        throw new Error('Entity X AI not available. Check preload.js.');
+
+      /* Build compact entity context (only non-null fields) */
+      var ctx = null;
+      if (_xaiCurrentEntity) {
+        var ex  = _xaiCurrentEntity;
+        var isT = ex.entity_type === 'TEXT';
+        ctx = {
+          _role:           'entity_x_advisor',
+          entity_type:     ex.entity_type,
+          risk_level:      isT ? ex.misinformation_risk : ex.risk_level,
+          trust_score:     ex.trust_score,
+          ai_probability:  isT ? ex.ai_generated_probability : ex.fake_probability,
+          credibility:     isT ? (ex.credibility_score != null ? ex.credibility_score : null) : null,
+          source:          (isT ? ex.url : ex.image_url) || null,
+          title:           isT ? (ex.content_title || null) : null,
+          forensic_indicators: (ex.explanation || ex.forensic_explanation || []).slice(0, 6),
+          ai_summary:      ex.ai_summary || null,
+          key_claims:      (ex.key_claims || []).slice(0, 4)
+        };
+        /* strip null values to save tokens */
+        Object.keys(ctx).forEach(function(k){ if (ctx[k] === null) delete ctx[k]; });
+      }
+
+      var result = await window.entityX.aiChat(_xaiMessages.slice(-14), ctx);
+      xaiThinkHide();
+
+      if (result.error) {
+        var errMsg = result.error.indexOf('API key') !== -1
+          ? 'No API key configured. Add an OpenRouter key via Settings or the OPENROUTER_API_KEY environment variable.'
+          : 'I encountered an issue: ' + result.error;
+        xaiAppend('assistant', errMsg);
+        clog('[ENTITY-X] Chat error: ' + result.error, 'warn');
+      } else {
+        var reply = result.response || '(no response)';
+        xaiAppend('assistant', reply);
+        _xaiMessages.push({ role: 'assistant', content: reply });
+        clog('[ENTITY-X] Response received.', 'success');
+      }
+    } catch(ex) {
+      xaiThinkHide();
+      xaiAppend('assistant', 'Unexpected error: ' + ex.message);
+      clog('[ENTITY-X] Exception: ' + ex.message, 'danger');
+    } finally {
+      btn.disabled = false;
+      var m = document.getElementById('xai-msgs');
+      if (m) m.scrollTop = 99999;
+    }
+  });
+  /* ══════════════════════════════════════════════════
+   * END ENTITY X AI ASSISTANT
+   * ══════════════════════════════════════════════════ */
+
+  /* ══════════════════════════════════════════════════
+   * TRUST EVOLUTION — Live right-panel canvas chart
+   *
+   * Pure Canvas 2D, no external dependencies.
+   * Trust score represents probabilistic credibility, not certainty.
+   * Data is read-only; no editing or manual refresh.
+   * ══════════════════════════════════════════════════ */
+  var _tePoints = [];          /* [{score: Number, ts: Number}] rolling window */
+  var _TE_MAX   = 120;         /* keep the last 120 data points              */
+  var _teRafId  = 0;           /* requestAnimationFrame handle               */
+
+  /* Seed with the initial "clean slate" score at app start */
+  _tePoints.push({ score: 100, ts: Date.now() });
+
+  /**
+   * Push a new trust-score data point and schedule a redraw.
+   * Called from updateStats() on every new entity detection.
+   * @param {number} score  Trust score 0–100
+   * @param {number} ts     Timestamp (ms since epoch)
+   */
+  function tePush(score, ts) {
+    _tePoints.push({ score: Math.min(100, Math.max(0, score)), ts: ts || Date.now() });
+    if (_tePoints.length > _TE_MAX) _tePoints.shift();
+    /* Debounce with rAF so multiple rapid updates cost only 1 paint */
+    if (_teRafId) cancelAnimationFrame(_teRafId);
+    _teRafId = requestAnimationFrame(teDraw);
+  }
+
+  /** Format a timestamp for X-axis labels (HH:MM:SS). */
+  function teTime(ts) {
+    var d = new Date(ts);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  /**
+   * Full canvas redraw.  DPR-aware, grid + smooth bezier line +
+   * gradient fill + latest-score annotation.
+   */
+  function teDraw() {
+    _teRafId = 0;
+    var canvas = document.getElementById('te-canvas');
+    if (!canvas) return;
+    var wrap   = document.getElementById('te-canvas-wrap');
+    if (!wrap) return;
+
+    /* Size canvas to its CSS box (DPR-aware) */
+    var dpr = window.devicePixelRatio || 1;
+    var W   = wrap.offsetWidth  || 230;
+    var H   = wrap.offsetHeight || 160;
+    if (canvas.width  !== Math.round(W * dpr) ||
+        canvas.height !== Math.round(H * dpr)) {
+      canvas.width  = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+    }
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    /* Layout margins */
+    var ML = 28, MR = 8, MT = 12, MB = 22;
+    var cw = W - ML - MR;
+    var ch = H - MT - MB;
+    if (cw < 10 || ch < 10) return;
+
+    /* Clear */
+    ctx.clearRect(0, 0, W, H);
+
+    var pts = _tePoints;
+    var n   = pts.length;
+
+    /* Helpers: data -> pixel coords */
+    var minTs = pts[0].ts, maxTs = pts[n - 1].ts;
+    var tsRange = Math.max(maxTs - minTs, 1);
+    function px(i) { return ML + (pts[i].ts - minTs) / tsRange * cw; }
+    function py(i) { return MT + (1 - pts[i].score / 100) * ch; }
+
+    /* ── Y-axis grid lines at 20 / 40 / 60 / 80 / 100 ── */
+    ctx.lineWidth = 0.5;
+    [20, 40, 60, 80, 100].forEach(function(yv) {
+      var yp = MT + (1 - yv / 100) * ch;
+      /* grid line */
+      ctx.strokeStyle = yv === 60 ? '#1a3358' : '#0f1c2e';
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(ML, yp); ctx.lineTo(ML + cw, yp); ctx.stroke();
+      ctx.setLineDash([]);
+      /* label */
+      ctx.fillStyle = '#1e3347';
+      ctx.font = '7px Consolas,monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(yv, ML - 4, yp + 2.5);
+    });
+
+    /* ── X-axis time labels (up to 4 evenly spaced) ── */
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1e3347';
+    ctx.font = '6.5px Consolas,monospace';
+    var labelCount = Math.min(n, 4);
+    for (var li = 0; li < labelCount; li++) {
+      var idx = Math.round(li / (labelCount - 1 || 1) * (n - 1));
+      var lx  = px(idx);
+      var lbl = teTime(pts[idx].ts);
+      if (lx >= ML && lx <= ML + cw) ctx.fillText(lbl, lx, H - MB + 9);
+    }
+
+    /* ── Gradient fill under the curve ── */
+    if (n > 1) {
+      var lastScore  = pts[n - 1].score;
+      var lineColor  = lastScore >= 80 ? '#4ade80' : lastScore >= 50 ? '#fbbf24' : '#ff6b6b';
+      var grad = ctx.createLinearGradient(0, MT, 0, MT + ch);
+      grad.addColorStop(0,   (lastScore >= 80 ? 'rgba(74,222,128,0.22)' : lastScore >= 50 ? 'rgba(251,191,36,0.18)' : 'rgba(255,107,107,0.18)'));
+      grad.addColorStop(1,   'rgba(6,12,21,0)');
+
+      /* Build smooth Catmull-Rom spline path */
+      function crPoint(i) { return { x: px(i), y: py(i) }; }
+      ctx.beginPath();
+      ctx.moveTo(px(0), py(0));
+      for (var i = 0; i < n - 1; i++) {
+        var p0 = crPoint(Math.max(i-1,0));
+        var p1 = crPoint(i);
+        var p2 = crPoint(i+1);
+        var p3 = crPoint(Math.min(i+2, n-1));
+        /* Catmull-Rom → cubic bezier control points (tau = 0.4) */
+        var tau = 0.4;
+        var cp1x = p1.x + (p2.x - p0.x) * tau / 2;
+        var cp1y = p1.y + (p2.y - p0.y) * tau / 2;
+        var cp2x = p2.x - (p3.x - p1.x) * tau / 2;
+        var cp2y = p2.y - (p3.y - p1.y) * tau / 2;
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+      /* close path along baseline for fill */
+      ctx.lineTo(px(n - 1), MT + ch);
+      ctx.lineTo(px(0),     MT + ch);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      /* ── Line stroke (same spline, no fill) ── */
+      ctx.beginPath();
+      ctx.moveTo(px(0), py(0));
+      for (var j = 0; j < n - 1; j++) {
+        var q0 = crPoint(Math.max(j-1,0));
+        var q1 = crPoint(j);
+        var q2 = crPoint(j+1);
+        var q3 = crPoint(Math.min(j+2, n-1));
+        var tau2 = 0.4;
+        var c1x = q1.x + (q2.x - q0.x) * tau2 / 2;
+        var c1y = q1.y + (q2.y - q0.y) * tau2 / 2;
+        var c2x = q2.x - (q3.x - q1.x) * tau2 / 2;
+        var c2y = q2.y - (q3.y - q1.y) * tau2 / 2;
+        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, q2.x, q2.y);
+      }
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth   = 1.5;
+      ctx.shadowColor = lineColor;
+      ctx.shadowBlur  = 4;
+      ctx.stroke();
+      ctx.shadowBlur  = 0;
+
+      /* ── Latest value dot + annotation ── */
+      var lx2 = px(n - 1), ly2 = py(n - 1);
+      ctx.beginPath();
+      ctx.arc(lx2, ly2, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle   = lineColor;
+      ctx.shadowColor = lineColor;
+      ctx.shadowBlur  = 6;
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+
+      /* Score label next to the dot */
+      var annotX = lx2 + 5 > ML + cw - 20 ? lx2 - 5 : lx2 + 5;
+      var annotAl = lx2 + 5 > ML + cw - 20 ? 'right' : 'left';
+      ctx.fillStyle  = lineColor;
+      ctx.font       = 'bold 8px Consolas,monospace';
+      ctx.textAlign  = annotAl;
+      ctx.fillText(lastScore.toFixed(1), annotX, ly2 - 5);
+    }
+
+    /* ── Axis border (L + bottom) ── */
+    ctx.strokeStyle = '#1a2d45';
+    ctx.lineWidth   = 0.8;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(ML, MT); ctx.lineTo(ML, MT + ch); ctx.lineTo(ML + cw, MT + ch);
+    ctx.stroke();
+
+    /* ── Waiting message when only the seed point exists ── */
+    if (n === 1) {
+      ctx.fillStyle = '#1e3347';
+      ctx.font      = '9px Segoe UI,Arial,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Awaiting detections…', W / 2, H / 2 + 4);
+    }
+  }
+
+  /* Redraw when the Trust tab becomes visible (ResizeObserver also handles resize) */
+  document.querySelectorAll('.rp-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      if (tab.dataset.pane === 'rp-trust') {
+        requestAnimationFrame(teDraw);
+      }
+    });
+  });
+
+  /* Redraw on container resize (panel drag / window resize) */
+  (function() {
+    var wrap = document.getElementById('te-canvas-wrap');
+    if (!wrap) return;
+    var ro = new ResizeObserver(function() {
+      /* Only repaint when the pane is visible */
+      var pane = document.getElementById('rp-trust');
+      if (pane && pane.classList.contains('active')) {
+        requestAnimationFrame(teDraw);
+      }
+    });
+    ro.observe(wrap);
+  })();
+  /* ══════════════════════════════════════════════════
+   * END TRUST EVOLUTION
+   * ══════════════════════════════════════════════════ */
+</script>
+</body>
+</html>
