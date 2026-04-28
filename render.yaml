@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: entity-x-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: HF_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /api/health
+    autoDeploy: true

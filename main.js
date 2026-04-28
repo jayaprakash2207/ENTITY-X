@@ -19,21 +19,23 @@ const db = new Proxy({}, {
   }
 });
 
+// Cloud backend URL — set ENTITY_X_CLOUD_URL in .env to point at Render/Railway/etc.
+// Falls back to local backend in development.
+const CLOUD_BASE = process.env.ENTITY_X_CLOUD_URL || '';
+const LOCAL_BASE  = 'http://127.0.0.1:8000';
+const API_BASE    = CLOUD_BASE || LOCAL_BASE;
+
 const IMAGE_MONITOR_API_URL =
-  process.env.IMAGE_MONITOR_API_URL ||
-  'http://127.0.0.1:8000/api/image-monitor';
+  process.env.IMAGE_MONITOR_API_URL || `${API_BASE}/api/image-monitor`;
 
 const TEXT_MONITOR_API_URL =
-  process.env.TEXT_MONITOR_API_URL ||
-  'http://127.0.0.1:8000/api/text-monitor';
+  process.env.TEXT_MONITOR_API_URL || `${API_BASE}/api/text-monitor`;
 
 const NEWS_SCANNER_API_URL =
-  process.env.NEWS_SCANNER_API_URL ||
-  'http://127.0.0.1:8000/api/news-scanner';
+  process.env.NEWS_SCANNER_API_URL || `${API_BASE}/api/news-scanner`;
 
 const LEGAL_CHAT_API_URL =
-  process.env.LEGAL_CHAT_API_URL ||
-  'http://127.0.0.1:8000/api/legal/chat';
+  process.env.LEGAL_CHAT_API_URL || `${API_BASE}/api/legal/chat`;
 
 const IMAGE_MONITOR_SESSION_ID = crypto.randomUUID();
 // Manual analyses get their own fresh session so live-monitor score depletion
@@ -1890,7 +1892,8 @@ function stopBackend() {
 }
 
 // Start backend immediately — before the window opens so it has time to boot
-startBackend();
+// Skip if using cloud backend (ENTITY_X_CLOUD_URL is set)
+if (!CLOUD_BASE) startBackend();
 
 // Poll until the backend is reachable, then notify the renderer
 let _backendIsReady = false;
@@ -1899,7 +1902,7 @@ async function waitForBackend(maxWaitMs = 60000) {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
     try {
-      const r = await net.fetch('http://127.0.0.1:8000/api/health', { signal: AbortSignal.timeout(1500) });
+      const r = await net.fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(3000) });
       if (r.ok || r.status === 404) {
         console.log('[BACKEND] Ready after', Date.now() - start, 'ms');
         _backendIsReady = true;

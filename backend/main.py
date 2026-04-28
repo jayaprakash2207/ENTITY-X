@@ -145,13 +145,14 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS — locked to localhost only (Electron renderer origin)
+# CORS — allow Electron app and localhost dev server
+# In cloud mode all origins are allowed since Electron sends requests from app:// or file://
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "app://.", "file://"],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Session-ID"],
 )
 
 # ---------------------------------------------------------------------------
