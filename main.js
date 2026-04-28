@@ -19,9 +19,11 @@ const db = new Proxy({}, {
   }
 });
 
-// Cloud backend URL — set ENTITY_X_CLOUD_URL in .env to point at Render/Railway/etc.
-// Falls back to local backend in development.
-const CLOUD_BASE = process.env.ENTITY_X_CLOUD_URL || '';
+// Cloud backend URL — defaults to the Render deployment so installed users get full AI features
+// without running a local Python backend. Override in .env:
+//   ENTITY_X_CLOUD_URL=   (empty string) → forces local backend (dev mode)
+//   ENTITY_X_CLOUD_URL=https://… → uses that URL instead
+const CLOUD_BASE = process.env.ENTITY_X_CLOUD_URL ?? 'https://entity-x.onrender.com';
 const LOCAL_BASE  = 'http://127.0.0.1:8000';
 const API_BASE    = CLOUD_BASE || LOCAL_BASE;
 
@@ -1898,7 +1900,7 @@ if (!CLOUD_BASE) startBackend();
 // Poll until the backend is reachable, then notify the renderer
 let _backendIsReady = false;
 
-async function waitForBackend(maxWaitMs = 60000) {
+async function waitForBackend(maxWaitMs = 120000) {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
     try {
