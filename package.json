@@ -2,8 +2,8 @@
   "name": "entity-x",
   "version": "1.0.0",
   "description": "Entity X — AI-powered digital integrity monitor",
-  "author": "Entity X",
-  "license": "ISC",
+  "author": "Jayaprakash A R",
+  "license": "MIT",
   "main": "main.js",
   "scripts": {
     "dev": "vite",
