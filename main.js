@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const { autoUpdater } = require('electron-updater');
 
 // Load .env from project root — must happen before any process.env reads
 require('dotenv').config({ path: path.join(__dirname, '.env') });
@@ -2077,6 +2078,53 @@ app.whenReady().then(() => {
     if (restored > 0) console.log(`[DB] Restored ${restored} entities into memory cache`);
   } catch (restoreErr) {
     console.error('[DB] Cache restore error:', restoreErr.message);
+  }
+
+  // ── Security: block dangerous permission requests ──────────────────────────
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowed = ['clipboard-read', 'clipboard-sanitized-write'];
+    callback(allowed.includes(permission));
+  });
+
+  // ── Security: reject bad TLS certificates ──────────────────────────────────
+  session.defaultSession.setCertificateVerifyProc((request, callback) => {
+    callback(request.errorCode === 0 ? 0 : -2);
+  });
+
+  // ── Security: block navigation to non-http(s) schemes from webviews ────────
+  app.on('web-contents-created', (_e, wc) => {
+    wc.on('will-navigate', (event, url) => {
+      try {
+        const { protocol } = new URL(url);
+        if (!['https:', 'http:', 'file:'].includes(protocol)) event.preventDefault();
+      } catch { event.preventDefault(); }
+    });
+
+    wc.setWindowOpenHandler(({ url }) => {
+      // Open external links in the system browser, not a new Electron window
+      try {
+        const { protocol } = new URL(url);
+        if (['https:', 'http:'].includes(protocol)) {
+          require('electron').shell.openExternal(url);
+        }
+      } catch {}
+      return { action: 'deny' };
+    });
+  });
+
+  // ── Auto-updater: check GitHub Releases on startup ─────────────────────────
+  if (process.env.NODE_ENV !== 'development') {
+    autoUpdater.checkForUpdatesAndNotify();
+    autoUpdater.on('update-available', () => {
+      dialog.showMessageBox({ type: 'info', title: 'Update Available', message: 'A new version of Entity X is downloading in the background.' });
+    });
+    autoUpdater.on('update-downloaded', () => {
+      dialog.showMessageBox({
+        type: 'info', title: 'Update Ready',
+        message: 'Update downloaded. Entity X will restart to apply it.',
+        buttons: ['Restart Now', 'Later'],
+      }).then(({ response }) => { if (response === 0) autoUpdater.quitAndInstall(); });
+    });
   }
 
   createMainWindow();

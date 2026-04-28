@@ -144,7 +144,7 @@ export default function App() {
   const [currentPage, setCurrentPage]         = useState('live-monitor')
   const [showChatPanel, setShowChatPanel]     = useState(false)
   const [detections, setDetections]           = useState([])
-  const [currentUrl, setCurrentUrl]           = useState('https://unsplash.com')
+  const [currentUrl, setCurrentUrl]           = useState('https://www.google.com')
   const [selectedEntity, setSelectedEntity]   = useState(null)
   const [showDetectionFeed, setShowDetectionFeed] = useState(true)
   const [scanPopupPayload, setScanPopupPayload]   = useState(null)
@@ -171,17 +171,36 @@ export default function App() {
 
   // ── Backend readiness ──────────────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false
     const timeoutId = window.setTimeout(() => setBackendTimedOut(true), 12000)
-    const unsub = window.backendBus?.onReady?.(() => {
+
+    const markReady = () => {
+      if (cancelled) return
       window.clearTimeout(timeoutId)
       setBackendReady(true)
       setBackendTimedOut(false)
-    })
+    }
+
+    // Primary: IPC signal from main process
+    const unsub = window.backendBus?.onReady?.(markReady)
     if (!window.backendBus?.onReady) {
       window.clearTimeout(timeoutId)
       setBackendTimedOut(true)
     }
-    return () => { window.clearTimeout(timeoutId); unsub?.() }
+
+    // Persistent fallback: keep polling every 2s until connected, no timeout
+    const poll = async () => {
+      while (!cancelled) {
+        await new Promise(r => setTimeout(r, 2000))
+        try {
+          const r = await fetch('http://127.0.0.1:8000/api/health', { signal: AbortSignal.timeout(1500) })
+          if (r.ok) { markReady(); return }
+        } catch (_) {}
+      }
+    }
+    poll()
+
+    return () => { cancelled = true; window.clearTimeout(timeoutId); unsub?.() }
   }, [])
 
   // ── System error events (backend spawn / DB init) ──────────────────────────

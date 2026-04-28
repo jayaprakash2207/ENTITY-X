@@ -43,12 +43,19 @@
       {
         "from": "data",
         "to": "data",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "public/icon.ico"
     },
@@ -65,7 +72,12 @@
     "asar": true,
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*"
-    ]
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "jayaprakash2207",
+      "repo": "ENTITY-X"
+    }
   },
   "keywords": [],
   "devDependencies": {
@@ -81,6 +93,7 @@
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.4.0",
+    "electron-updater": "^6.8.3",
     "lucide-react": "^0.576.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

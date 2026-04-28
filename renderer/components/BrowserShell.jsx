@@ -22,7 +22,7 @@ function formatUrl(url) {
 }
 
 const PRESETS = [
-  { label: 'Unsplash',  url: 'https://unsplash.com' },
+  { label: 'Google',   url: 'https://www.google.com' },
   { label: 'BBC',       url: 'https://bbc.com' },
   { label: 'Reuters',   url: 'https://reuters.com' },
   { label: 'Wikipedia', url: 'https://en.wikipedia.org' },
@@ -34,7 +34,7 @@ function mkTab(url) {
 }
 
 export default function BrowserShell({
-  initialUrl = 'https://unsplash.com',
+  initialUrl = 'https://www.google.com',
   onUrlChange,
   onChatToggle,
   threatCount = 0,
@@ -337,11 +337,11 @@ export default function BrowserShell({
   const goBack  = () => webviewRefs.current[activeTab]?.goBack?.()
   const goFwd   = () => webviewRefs.current[activeTab]?.goForward?.()
   const reload  = () => { webviewRefs.current[activeTab]?.reload?.(); flashHud('RELOADING') }
-  const goHome  = () => navigate('https://unsplash.com')
+  const goHome  = () => navigate('https://www.google.com')
 
   /* ── Tabs ── */
   const addTab = () => {
-    const t = mkTab('https://unsplash.com')
+    const t = mkTab('https://www.google.com')
     setTabs(prev => [...prev, t])
     setActiveTab(t.id)
     setInputUrl(t.url)
@@ -355,7 +355,7 @@ export default function BrowserShell({
     setTabs(prev => {
       const next = prev.filter(t => t.id !== id)
       if (next.length === 0) {
-        const fresh = mkTab('https://unsplash.com')
+        const fresh = mkTab('https://www.google.com')
         setActiveTab(fresh.id)
         setInputUrl(fresh.url)
         return [fresh]
