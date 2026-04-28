@@ -1,0 +1,11 @@
+# Lightweight requirements for CI — no ML/torch dependencies.
+# Tests are all mocked and don't require GPU models.
+fastapi==0.129.0
+uvicorn[standard]==0.41.0
+httpx==0.28.1
+python-dotenv==1.2.1
+slowapi==0.1.9
+Pillow==12.1.1
+python-multipart==0.0.22
+pytest==9.0.2
+pytest-asyncio==1.3.0
