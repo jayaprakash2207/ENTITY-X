@@ -1,3 +1,37 @@
-fastapi>=0.115.0,<1.0.0
-uvicorn[standard]>=0.30.0,<1.0.0
-httpx>=0.27.0,<1.0.0
+fastapi==0.129.0
+uvicorn[standard]==0.41.0
+httpx==0.28.1
+python-dotenv==1.2.1
+slowapi==0.1.9
+
+# ML dependencies for real deepfake detection
+torch==2.10.0
+torchvision==0.25.0
+torchaudio>=2.0.0,<3.0.0
+transformers==5.2.0
+Pillow==12.1.1
+timm==1.0.25
+
+# Video processing dependencies
+opencv-python==4.13.0.92
+numpy==2.4.2
+yt-dlp==2026.3.13
+pytubefix==10.3.8
+youtube-transcript-api>=0.6.0,<1.0.0
+
+# Audio processing dependencies
+librosa==0.11.0
+scipy==1.17.1
+soundfile==0.13.1
+imageio-ffmpeg==0.6.0
+# Audio ML models via transformers:
+#   PRIMARY   – mo-thecreator/deepfake-audio-detection  (binary fake/real classifier)
+#   SECONDARY – microsoft/wavlm-base-plus               (WavLM feature extractor)
+
+# Face detection uses OpenCV Haar cascade (built into opencv-python, no extra deps)
+
+# Testing
+pytest==9.0.2
+pytest-asyncio==1.3.0
+
+python-multipart==0.0.22

@@ -209,7 +209,8 @@ var _renderTimeline; // populated after render
 function renderInvestigation(entity) {
   _entity = entity;
   var isText = entity.entity_type === 'TEXT';
-  var risk = isText ? (entity.misinformation_risk || 'LOW') : (entity.risk_level || 'LOW');
+  // Use risk_level for all entity types (based on AI/fake probability)
+  var risk = entity.risk_level || 'LOW';
   var aiPct = isText
     ? ((entity.ai_generated_probability || 0) * 100)
     : ((entity.fake_probability || 0) * 100);
@@ -702,7 +703,7 @@ function buildTimelineBlock(entity) {
     events.push({ ts: detectedAt + 1800, label: 'Gemini 2.0 Flash forensic analysis completed — topic: ' + (entity.topic || 'General'), type: 'gemini' });
   }
 
-  if ((entity.misinformation_risk || entity.risk_level || 'LOW').toUpperCase() === 'HIGH') {
+  if ((entity.risk_level || entity.misinformation_risk || 'LOW').toUpperCase() === 'HIGH') {
     events.push({ ts: detectedAt + 2200, label: 'High-risk verdict issued — trust score decremented', type: 'alert' });
   }
 
@@ -899,7 +900,7 @@ function _legalGenerate(entity) {
     content_title:          (isText ? entity.content_title : 'Image Entity') || '',
     ai_generated_probability: isText ? (entity.ai_generated_probability || null) : null,
     fake_probability:         isText ? null : (entity.fake_probability || null),
-    misinformation_risk:    (entity.misinformation_risk || entity.risk_level || null),
+    misinformation_risk:    (entity.risk_level || entity.misinformation_risk || null),
     credibility_score:      entity.credibility_score  || null,
     forensic_findings:      entity.explanation || entity.forensic_explanation || [],
     ai_summary:             entity.ai_summary  || null,
@@ -941,6 +942,85 @@ function _legalShowResult(result) {
   }
 
   if (wrap) wrap.classList.add('visible');
+}
+
+/* ── Legal Awareness Chat ──────────────────────────────────────────────────── */
+
+var _legalChatMessages = []; // in-memory conversation for this session
+
+/**
+ * Send the user's query via postMessage to parent window (index.html),
+ * which relays it to main process via IPC.
+ */
+function _legalChatSend() {
+  var input   = document.getElementById('legal-chat-input');
+  var status  = document.getElementById('legal-chat-status');
+  var sendBtn = document.getElementById('legal-chat-send-btn');
+  if (!input) return;
+  var query = input.value.trim();
+  if (!query) return;
+
+  _legalChatAppend('user', query);
+  _legalChatMessages.push({ role: 'user', content: query });
+  input.value = '';
+
+  if (sendBtn) sendBtn.disabled = true;
+  if (status) { status.textContent = 'Thinking\u2026'; status.style.color = '#4facfe'; }
+
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: 'ev:legal-chat-query',
+      payload: {
+        entity_id:  _entity ? (_entity.entity_id || '') : '',
+        user_query: query,
+        history:    _legalChatMessages.slice(-10)
+      }
+    }, '*');
+  }
+}
+
+/**
+ * Handle the AI response returned from the parent via postMessage.
+ */
+function _legalChatHandleResult(result) {
+  var status  = document.getElementById('legal-chat-status');
+  var sendBtn = document.getElementById('legal-chat-send-btn');
+  if (sendBtn) sendBtn.disabled = false;
+  if (status) status.textContent = '';
+
+  if (result && result.error) {
+    _legalChatAppend('ai', 'Error: ' + result.error);
+    return;
+  }
+  var text = (result && result.ai_response) ? result.ai_response : '(no response)';
+  _legalChatMessages.push({ role: 'assistant', content: text });
+  _legalChatAppend('ai', text);
+}
+
+/**
+ * Pre-populate the chat with persisted history loaded from SQLite.
+ * Only called once when the legal block is first rendered.
+ */
+function _legalChatLoadHistory(history) {
+  var msgs = document.getElementById('legal-chat-messages');
+  if (!msgs || !history || !history.length) return;
+  if (msgs.children.length > 0) return; // already populated
+  history.forEach(function (item) {
+    if (item.user_query)  _legalChatAppend('user', item.user_query);
+    if (item.ai_response) _legalChatAppend('ai',   item.ai_response);
+  });
+}
+
+/** Append a single chat message bubble to the messages container. */
+function _legalChatAppend(role, text) {
+  var msgs = document.getElementById('legal-chat-messages');
+  if (!msgs) return;
+  var div = document.createElement('div');
+  div.className = 'lcm lcm-' + (role === 'user' ? 'user' : 'ai');
+  div.innerHTML = '<div class="lcm-bubble">' + esc(String(text)) + '</div>'
+    + '<div class="lcm-meta">' + (role === 'user' ? new Date().toLocaleTimeString() : '') + '</div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
 /* ── Event wiring ────────────────────────────────────────── */
@@ -1144,7 +1224,7 @@ function _buildExportPayload(entity) {
     word_count:                entity.word_count || null,  // TEXT: word count from extraction
     detected_at:               entity.detected_at || null,
     analyzed_at:               entity.analyzed_at || null,
-    risk_level:                isText ? (entity.misinformation_risk || 'LOW') : (entity.risk_level || 'LOW'),
+    risk_level:                entity.risk_level || entity.misinformation_risk || 'LOW',
     ai_generated_probability:  entity.ai_generated_probability || 0,
     fake_probability:          entity.fake_probability || 0,
     credibility_score:         entity.credibility_score || 0,

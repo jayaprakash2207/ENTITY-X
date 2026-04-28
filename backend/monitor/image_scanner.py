@@ -9,14 +9,18 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import logging
 import socket
 from urllib.parse import urlparse
 
 import httpx
+
+logger = logging.getLogger(__name__)
 from fastapi import HTTPException
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB hard cap
-REQUEST_TIMEOUT_SECONDS = 6.0
+REQUEST_TIMEOUT_SECONDS = 30.0  # Generous timeout for CDN images under load
+MAX_CONCURRENT_FETCHES = 6  # Limit parallel downloads to avoid congestion
 
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg",
@@ -25,6 +29,26 @@ ALLOWED_CONTENT_TYPES = {
     "image/gif",
     "image/bmp",
     "image/tiff",
+    "image/avif",
+    "image/svg+xml",
+    "application/octet-stream",  # Some CDNs serve images as binary
+    "binary/octet-stream",
+}
+
+
+# Full browser-like request headers — improves CDN compatibility and reduces 403s.
+# Sec-Fetch-* headers are required by some modern CDNs (Cloudflare, Fastly, etc.)
+_BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Sec-Fetch-Dest": "image",
+    "Sec-Fetch-Mode": "no-cors",
+    "Sec-Fetch-Site": "cross-site",
+    "Cache-Control": "no-cache",
+    "Referer": "https://www.google.com/",
 }
 
 
@@ -43,6 +67,11 @@ class SafeImageFetcher:
     - Streamed bytes counted in real time; fetch aborted if limit exceeded.
     - Content-Type validated against ALLOWED_CONTENT_TYPES.
     - If no Content-Type header is present, magic bytes are checked.
+
+    Returns None (instead of raising) for transient failures so callers can
+    fall back to URL-based heuristic analysis without surfacing errors to the
+    client.  Only 400-level validation errors (bad scheme, private host) are
+    re-raised as HTTPException.
     """
 
     def __init__(
@@ -54,36 +83,35 @@ class SafeImageFetcher:
             timeout_seconds, connect=timeout_seconds, read=timeout_seconds
         )
         self.max_bytes = max_bytes
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_FETCHES)
+        self._client: httpx.AsyncClient | None = None
 
     # ------------------------------------------------------------------
     # Public
     # ------------------------------------------------------------------
 
-    async def fetch(self, image_url: str) -> bytes:
+    async def fetch(self, image_url: str) -> bytes | None:
         """
-        Fetch and return raw image bytes from *image_url*.
+        Fetch and return raw image bytes from *image_url*, or None on failure.
+
+        Returns None for transient/CDN errors so the caller can degrade
+        gracefully to heuristic analysis.
 
         Raises:
-            HTTPException(400)  Invalid URL or private/reserved host.
-            HTTPException(413)  Image exceeds size cap.
-            HTTPException(415)  Unsupported content type.
-            HTTPException(422)  Fetch failed or empty payload.
+            HTTPException(400)  Invalid URL or private/reserved host (hard stop).
         """
         self._validate_url_format(image_url)
         await self._ensure_public_host(image_url)
 
-        limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
-        async with httpx.AsyncClient(
-            timeout=self.timeout, follow_redirects=True, limits=limits
-        ) as client:
-            async with client.stream(
-                "GET", image_url, headers={"User-Agent": "EntityXMonitor/0.1"}
-            ) as response:
+        client = self._get_client()
+        # Limit concurrent downloads so bursts don't exhaust sockets / timeouts
+        async with self._semaphore:
+            try:
+                response = await client.get(image_url, headers=_BROWSER_HEADERS)
+
                 if response.status_code != 200:
-                    raise HTTPException(
-                        status_code=422,
-                        detail="Unable to fetch image from the provided URL",
-                    )
+                    logger.warning(f"[fetcher] HTTP {response.status_code} for {image_url[:70]} — deferring to heuristic")
+                    return None
 
                 content_type = (
                     (response.headers.get("content-type") or "")
@@ -91,50 +119,49 @@ class SafeImageFetcher:
                     .strip()
                     .lower()
                 )
-                if content_type and content_type not in ALLOWED_CONTENT_TYPES:
-                    raise HTTPException(
-                        status_code=415,
-                        detail="Content type is not a supported image format",
-                    )
+                if content_type and content_type not in ALLOWED_CONTENT_TYPES and not content_type.startswith("image/"):
+                    logger.debug(f"[fetcher] Non-image content-type '{content_type}' for {image_url[:60]} — skipping")
+                    return None
 
-                advertised_size = response.headers.get("content-length")
-                if (
-                    advertised_size
-                    and advertised_size.isdigit()
-                    and int(advertised_size) > self.max_bytes
-                ):
-                    raise HTTPException(
-                        status_code=413,
-                        detail="Image exceeds maximum allowed size",
-                    )
+                collected = response.content
 
-                collected = bytearray()
-                async for chunk in response.aiter_bytes(64 * 1024):
-                    if not chunk:
-                        continue
-                    collected.extend(chunk)
-                    if len(collected) > self.max_bytes:
-                        raise HTTPException(
-                            status_code=413,
-                            detail="Image exceeds maximum allowed size",
-                        )
+                if len(collected) > self.max_bytes:
+                    logger.warning(f"[fetcher] Image too large ({len(collected)} bytes) for {image_url[:60]} — skipping")
+                    return None
 
                 if not collected:
-                    raise HTTPException(
-                        status_code=422, detail="Fetched payload is empty"
-                    )
+                    logger.debug(f"[fetcher] Empty payload for {image_url[:60]} — deferring to heuristic")
+                    return None
+
+                # Skip tiny images (tracking pixels, 1x1 gifs, etc.)
+                if len(collected) < 1000:
+                    logger.debug(f"[fetcher] Image too small ({len(collected)} bytes) for {image_url[:60]} — skipping")
+                    return None
 
                 if not content_type and not self._looks_like_image_bytes(collected):
-                    raise HTTPException(
-                        status_code=415,
-                        detail="Fetched payload does not appear to be an image",
-                    )
+                    logger.debug(f"[fetcher] Payload does not look like an image for {image_url[:60]} — skipping")
+                    return None
 
                 return bytes(collected)
+            except httpx.TimeoutException as exc:
+                logger.warning(f"[fetcher] Timeout for {image_url[:60]}: {exc}")
+                return None
+            except httpx.RequestError as exc:
+                logger.warning(f"[fetcher] Request error for {image_url[:60]}: {exc}")
+                return None
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Return a persistent AsyncClient, creating one if needed."""
+        if self._client is None or self._client.is_closed:
+            limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout, follow_redirects=True, limits=limits,
+            )
+        return self._client
 
     @staticmethod
     def _validate_url_format(image_url: str) -> None:

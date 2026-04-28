@@ -1,20 +1,88 @@
 {
-  "name": "vs-g-entity",
+  "name": "entity-x",
   "version": "1.0.0",
+  "description": "Entity X — AI-powered digital integrity monitor",
+  "author": "Entity X",
+  "license": "ISC",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "frontend": "vite",
+    "backend": ".\\.venv\\Scripts\\python.exe -m uvicorn backend.main:app --reload --port 8000",
+    "build": "vite build",
+    "start": "npm run build && node electron-launch.cjs",
+    "dist": "npm run build && electron-builder --win",
+    "dist:dir": "npm run build && electron-builder --win --dir",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.entityx.app",
+    "productName": "Entity X",
+    "copyright": "Copyright © 2026 Entity X",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "db.js",
+      "electron-launch.cjs",
+      "renderer/**/*",
+      "backend/**/*",
+      "data/**/*",
+      "node_modules/**/*",
+      "!node_modules/.cache",
+      "!**/__pycache__/**",
+      "!**/*.pyc",
+      "!.venv/**/*",
+      "!.git/**/*",
+      "!.env"
+    ],
+    "extraResources": [
+      {
+        "from": "data",
+        "to": "data",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Entity X",
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico",
+      "license": "LICENSE.txt"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ]
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
-    "electron": "^40.6.0"
+    "@vitejs/plugin-react": "^5.1.4",
+    "autoprefixer": "^10.4.16",
+    "electron": "^36.9.5",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.6",
+    "vite": "^7.3.1"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2"
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.4.0",
+    "lucide-react": "^0.576.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }

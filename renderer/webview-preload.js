@@ -331,3 +331,343 @@ setInterval(() => {
     setTimeout(startTextMonitorForPage, 1800);
   }
 }, 1000);
+
+/* ============= VIDEO MONITORING ============= */
+/*
+ * Detects video elements and reports their src URLs for deepfake analysis.
+ * Similar to image monitoring but handles <video> and <source> elements.
+ */
+
+const VIDEO_URLS_SEEN = new Set();
+
+function installVideoObserver() {
+  if (window.__videoObserverInstalled) {
+    console.log('[WEBVIEW] Video observer already installed');
+    return;
+  }
+  window.__videoObserverInstalled = true;
+
+  console.log('[WEBVIEW] Installing video observer...');
+
+  /**
+   * Report a video URL to main process (deduplicated)
+   */
+  function reportVideoUrl(url) {
+    if (!url || typeof url !== 'string' || url.trim() === '') return;
+    if (VIDEO_URLS_SEEN.has(url)) return;
+    if (url.startsWith('blob:') || url.startsWith('data:')) return; // Skip blob/data URLs
+
+    VIDEO_URLS_SEEN.add(url);
+    console.log(`[WEBVIEW] Reporting video: ${url.substring(0, 80)}...`);
+    ipcRenderer.send('webview:video-url', url);
+  }
+
+  /**
+   * Extract video URL from element
+   */
+  function getVideoUrl(video) {
+    // Check for direct src
+    if (video.src && video.src.trim()) {
+      return video.src;
+    }
+    // Check <source> children
+    const sources = video.querySelectorAll('source');
+    for (const source of sources) {
+      if (source.src && source.src.trim()) {
+        return source.src;
+      }
+    }
+    // Check currentSrc (set after load)
+    if (video.currentSrc && video.currentSrc.trim()) {
+      return video.currentSrc;
+    }
+    return null;
+  }
+
+  /**
+   * Watch a single <video> element
+   */
+  function watchVideo(video) {
+    if (!(video instanceof HTMLVideoElement)) return;
+
+    function sendCurrentUrl() {
+      const url = getVideoUrl(video);
+      if (url) reportVideoUrl(url);
+    }
+
+    // Check immediately
+    sendCurrentUrl();
+
+    // Watch for source changes
+    video.addEventListener('loadedmetadata', sendCurrentUrl, { passive: true });
+    video.addEventListener('loadstart', sendCurrentUrl, { passive: true });
+  }
+
+  // Scan existing videos
+  const existingVideos = document.querySelectorAll('video');
+  console.log(`[WEBVIEW] Found ${existingVideos.length} existing videos`);
+  existingVideos.forEach(watchVideo);
+
+  // Watch for dynamically added videos
+  const videoObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        for (const node of mutation.addedNodes) {
+          if (node instanceof HTMLVideoElement) {
+            console.log('[WEBVIEW] Detected dynamically added video element');
+            watchVideo(node);
+          } else if (node instanceof Element) {
+            const videos = node.querySelectorAll('video');
+            if (videos.length > 0) console.log(`[WEBVIEW] Found ${videos.length} videos in dynamic node`);
+            videos.forEach(watchVideo);
+          }
+        }
+      }
+    }
+  });
+
+  videoObserver.observe(document.documentElement || document.body, {
+    childList: true,
+    subtree: true
+  });
+  console.log('[WEBVIEW] Video MutationObserver installed');
+}
+
+/* ============= AUDIO MONITORING ============= */
+/*
+ * Detects audio content via three complementary methods:
+ *   1. <audio> element src/source scanning + MutationObserver
+ *   2. <a href="*.mp3|*.wav|..."> link scanning (podcast pages, download links)
+ *   3. Intercepts AudioContext / fetch() / XMLHttpRequest calls that load audio blobs
+ *      (covers JS-based players like podcast widgets, Soundcloud embeds, etc.)
+ */
+
+const AUDIO_URLS_SEEN = new Set();
+const AUDIO_EXT_RE = /\.(mp3|wav|ogg|flac|aac|m4a|opus|weba|caf)(\?[^#]*)?$/i;
+
+function installAudioObserver() {
+  if (window.__audioObserverInstalled) {
+    console.log('[WEBVIEW] Audio observer already installed');
+    return;
+  }
+  window.__audioObserverInstalled = true;
+
+  console.log('[WEBVIEW] Installing audio observer (v2 — element + links + XHR)...');
+
+  /* ── Deduplicated reporter ── */
+  function reportAudioUrl(url) {
+    if (!url || typeof url !== 'string' || url.trim() === '') return;
+    if (AUDIO_URLS_SEEN.has(url)) return;
+    if (url.startsWith('blob:') || url.startsWith('data:')) return;
+    if (!url.startsWith('http')) return;
+    AUDIO_URLS_SEEN.add(url);
+    console.log(`[WEBVIEW] Audio detected: ${url.substring(0, 80)}`);
+    ipcRenderer.send('webview:audio-url', url);
+  }
+
+  /* ── Method 1: <audio> elements ── */
+  function getAudioUrl(audio) {
+    if (audio.src && audio.src.trim()) return audio.src;
+    const sources = audio.querySelectorAll('source');
+    for (const s of sources) {
+      if (s.src && s.src.trim()) return s.src;
+    }
+    return audio.currentSrc || null;
+  }
+
+  function watchAudio(audio) {
+    if (!(audio instanceof HTMLAudioElement)) return;
+    const send = () => { const u = getAudioUrl(audio); if (u) reportAudioUrl(u); };
+    send();
+    audio.addEventListener('loadedmetadata', send, { passive: true });
+    audio.addEventListener('loadstart',       send, { passive: true });
+    audio.addEventListener('play',            send, { passive: true });
+  }
+
+  /* ── Method 2: <a> links pointing to audio files ── */
+  function scanAudioLinks(root) {
+    (root || document).querySelectorAll('a[href]').forEach(a => {
+      if (AUDIO_EXT_RE.test(a.href)) reportAudioUrl(a.href);
+    });
+  }
+
+  /* ── Method 3: Intercept fetch() for audio URLs ── */
+  const _origFetch = window.fetch;
+  window.fetch = function(resource, init) {
+    try {
+      const url = typeof resource === 'string' ? resource
+        : resource instanceof Request ? resource.url : null;
+      if (url && AUDIO_EXT_RE.test(url.split('?')[0])) reportAudioUrl(url);
+    } catch (_) {}
+    return _origFetch.apply(this, arguments);
+  };
+
+  /* ── Method 4: Intercept XMLHttpRequest for audio URLs ── */
+  const _origXhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    try {
+      if (typeof url === 'string' && AUDIO_EXT_RE.test(url.split('?')[0])) reportAudioUrl(url);
+    } catch (_) {}
+    return _origXhrOpen.apply(this, arguments);
+  };
+
+  /* ── Bootstrap ── */
+  const existingAudio = document.querySelectorAll('audio');
+  console.log(`[WEBVIEW] Found ${existingAudio.length} existing audio elements`);
+  existingAudio.forEach(watchAudio);
+  scanAudioLinks();
+
+  const audioObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type !== 'childList') continue;
+      for (const node of mutation.addedNodes) {
+        if (node instanceof HTMLAudioElement) {
+          watchAudio(node);
+        } else if (node instanceof Element) {
+          node.querySelectorAll('audio').forEach(watchAudio);
+          // Also scan new links
+          if (AUDIO_EXT_RE.test((node.getAttribute && node.getAttribute('href')) || ''))
+            reportAudioUrl(node.href);
+          node.querySelectorAll && node.querySelectorAll('a[href]').forEach(a => {
+            if (AUDIO_EXT_RE.test(a.href)) reportAudioUrl(a.href);
+          });
+        }
+      }
+    }
+  });
+
+  audioObserver.observe(document.documentElement || document.body, {
+    childList: true,
+    subtree: true
+  });
+  console.log('[WEBVIEW] Audio observer v2 installed');
+}
+
+/* ---- Bootstrap Video & Audio ---- */
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    installVideoObserver();
+    installAudioObserver();
+  }, { once: true });
+} else {
+  installVideoObserver();
+  installAudioObserver();
+}
+
+// Retry for lazy-loaded media
+setTimeout(() => {
+  installVideoObserver();
+  installAudioObserver();
+}, 1000);
+setTimeout(() => {
+  installVideoObserver();
+  installAudioObserver();
+}, 3000);
+
+/* ============= CONTEXT SCAN (right-click / double-click to scan) ============= */
+/*
+ * Right-click on an image, video, or audio element → native "Scan with Entity X" menu.
+ * Right-click while text is selected → same menu for the selected text.
+ * Double-click on an image → immediate scan popup (no menu step).
+ */
+
+function installContextScanHandlers() {
+  if (window.__contextScanInstalled) return;
+  window.__contextScanInstalled = true;
+
+  /* ── contextmenu handler ── */
+  document.addEventListener('contextmenu', (e) => {
+    const target = e.target;
+    let payload = null;
+
+    if (target instanceof HTMLImageElement) {
+      const url = target.currentSrc || target.src;
+      if (url && url.startsWith('http')) {
+        payload = { type: 'image', url };
+      }
+    } else if (target instanceof HTMLVideoElement) {
+      // currentSrc is often blob: on YouTube/streaming sites
+      const rawUrl = target.currentSrc || target.src || '';
+      let videoUrl = rawUrl.startsWith('http') ? rawUrl : null;
+
+      if (!videoUrl) {
+        // 1. Walk up DOM to find nearest <a> with a watch/video URL
+        let el = target;
+        while (el && el !== document.body) {
+          if (el.tagName === 'A' && el.href) {
+            const href = el.href;
+            if (href.includes('watch?v=') || href.includes('/video/') || href.includes('/shorts/') || href.includes('/reel/')) {
+              videoUrl = href;
+              break;
+            }
+          }
+          el = el.parentElement;
+        }
+      }
+
+      if (!videoUrl) {
+        // 2. Look for a nearby <a> sibling/cousin with a watch URL (YouTube thumbnail links)
+        const container = target.closest('ytd-thumbnail, [data-video-id], article, .video-item, .media-item, li') || target.parentElement;
+        if (container) {
+          const link = container.querySelector('a[href*="watch?v="], a[href*="/video/"], a[href*="/shorts/"], a[href*="/reel/"]');
+          if (link) videoUrl = link.href;
+        }
+      }
+
+      if (!videoUrl) {
+        // 3. If the page itself is a video watch page, use it
+        const pageUrl = window.location.href;
+        if (pageUrl.includes('watch?v=') || pageUrl.includes('/video/') || pageUrl.includes('/shorts/') || pageUrl.includes('/reel/')) {
+          videoUrl = pageUrl;
+        }
+      }
+
+      if (!videoUrl) {
+        // 4. Last resort: use data-video-id attribute on container to construct URL
+        const container = target.closest('[data-video-id]');
+        if (container && container.dataset.videoId) {
+          videoUrl = `https://www.youtube.com/watch?v=${container.dataset.videoId}`;
+        }
+      }
+
+      if (videoUrl && videoUrl.startsWith('http')) {
+        payload = { type: 'video', url: videoUrl, page_url: window.location.href, title: document.title };
+      }
+    } else if (target instanceof HTMLAudioElement) {
+      const url = target.currentSrc || target.src;
+      if (url && url.startsWith('http')) {
+        payload = { type: 'audio', url };
+      }
+    } else {
+      /* Text selection scan */
+      const selected = window.getSelection?.()?.toString?.()?.trim();
+      if (selected && selected.length > 20) {
+        payload = { type: 'text', text: selected, title: document.title, url: window.location.href };
+      }
+    }
+
+    if (payload) {
+      e.preventDefault();
+      ipcRenderer.send('webview:context-scan-request', payload);
+    }
+  }, true);
+
+  /* ── double-click on image → immediate popup (no menu) ── */
+  document.addEventListener('dblclick', (e) => {
+    const target = e.target;
+    if (target instanceof HTMLImageElement) {
+      const url = target.currentSrc || target.src;
+      if (url && url.startsWith('http')) {
+        ipcRenderer.send('webview:context-scan-request', { type: 'image', url, immediate: true });
+      }
+    }
+  }, true);
+
+  console.log('[WEBVIEW] Context scan handlers installed');
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', installContextScanHandlers, { once: true });
+} else {
+  installContextScanHandlers();
+}

@@ -8,6 +8,9 @@ here as the application grows.
 from __future__ import annotations
 
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BackgroundScheduler:
@@ -69,5 +72,5 @@ class BackgroundScheduler:
             try:
                 await factory()
             except Exception as exc:  # pragma: no cover
-                print(f"[scheduler] Task '{name}' raised an exception: {exc}")
+                logger.error(f"[scheduler] Task '{name}' raised an exception: {exc}")
             await asyncio.sleep(interval)

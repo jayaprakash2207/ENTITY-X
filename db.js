@@ -73,21 +73,53 @@ function initDb(dbPath) {
   } catch (err) {
     console.error('[DB] FATAL — could not initialise database:', err.message);
     _db = null;   // keep running; all helpers will no-op when _db is null
+    // Expose the error so main.js can notify the user via IPC
+    initDb._lastError = err.message;
   }
 }
+initDb._lastError = null;
 
 // ---------------------------------------------------------------------------
 // Schema migrations
 // ---------------------------------------------------------------------------
 
 function _runMigrations() {
+  // ── Schema upgrade: expand entity_type CHECK to include VIDEO and AUDIO ──
+  // SQLite can't ALTER a CHECK constraint, so we recreate the table if needed.
+  try {
+    const tbl = _db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='entities'").get();
+    if (tbl && tbl.sql && !tbl.sql.includes("'VIDEO'")) {
+      console.log('[DB] Migrating entities table to support VIDEO/AUDIO types...');
+      _db.exec(`
+        BEGIN;
+        CREATE TABLE entities_new (
+          entity_id      TEXT    PRIMARY KEY,
+          entity_type    TEXT    NOT NULL CHECK(entity_type IN ('IMAGE','NEWS','TEXT','VIDEO','AUDIO','UNKNOWN')),
+          source_url     TEXT    DEFAULT '',
+          title          TEXT    DEFAULT '',
+          extracted_text TEXT    DEFAULT '',
+          risk_level     TEXT    DEFAULT 'LOW',
+          analysis_json  TEXT    DEFAULT '{}',
+          detected_at    DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+        );
+        INSERT OR IGNORE INTO entities_new SELECT * FROM entities;
+        DROP TABLE entities;
+        ALTER TABLE entities_new RENAME TO entities;
+        COMMIT;
+      `);
+      console.log('[DB] Migration complete.');
+    }
+  } catch (migErr) {
+    console.warn('[DB] Migration check failed (non-fatal):', migErr.message);
+  }
+
   _db.exec(`
     -- ── 1. entities ──────────────────────────────────────────────────────────
     -- Stores every detected entity.  analysis_json holds the full raw payload
     -- as JSON so no schema change is needed when the backend adds new fields.
     CREATE TABLE IF NOT EXISTS entities (
       entity_id      TEXT    PRIMARY KEY,
-      entity_type    TEXT    NOT NULL CHECK(entity_type IN ('IMAGE','NEWS','TEXT','UNKNOWN')),
+      entity_type    TEXT    NOT NULL CHECK(entity_type IN ('IMAGE','NEWS','TEXT','VIDEO','AUDIO','UNKNOWN')),
       source_url     TEXT    DEFAULT '',
       title          TEXT    DEFAULT '',
       extracted_text TEXT    DEFAULT '',
@@ -139,6 +171,20 @@ function _runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_audit_timestamp      ON audit_log(timestamp);
     CREATE INDEX IF NOT EXISTS idx_legal_entity         ON legal_sessions(entity_id);
   `);
+
+  // alert_rules table migration
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS alert_rules (
+      rule_id        TEXT    PRIMARY KEY,
+      name           TEXT    NOT NULL,
+      enabled        INTEGER DEFAULT 1,
+      condition_json TEXT    DEFAULT '{}',
+      action_json    TEXT    DEFAULT '{}',
+      created_at     DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      trigger_count  INTEGER DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_rules_enabled ON alert_rules(enabled);
+  `);
 }
 
 // ---------------------------------------------------------------------------
@@ -169,10 +215,20 @@ function _prepareStatements() {
   `);
 
   _stmts.queryEntities = _db.prepare(`
-    SELECT * FROM entities
-    WHERE (@type IS NULL OR entity_type = @type)
-      AND (@risk  IS NULL OR risk_level  = @risk)
-    ORDER BY detected_at DESC
+    SELECT e.*,
+           th.trust_score AS trust_score_db,
+           th.delta       AS trust_score_delta_db
+    FROM entities e
+    LEFT JOIN (
+      SELECT entity_id, trust_score, delta
+      FROM trust_history
+      WHERE id IN (
+        SELECT MAX(id) FROM trust_history GROUP BY entity_id
+      )
+    ) th ON th.entity_id = e.entity_id
+    WHERE (@type IS NULL OR e.entity_type = @type)
+      AND (@risk  IS NULL OR e.risk_level  = @risk)
+    ORDER BY e.detected_at DESC
     LIMIT @limit
   `);
 
@@ -182,7 +238,20 @@ function _prepareStatements() {
       AND (@risk  IS NULL OR risk_level  = @risk)
   `);
 
-  _stmts.getEntity = _db.prepare(`SELECT * FROM entities WHERE entity_id = ?`);
+  _stmts.getEntity = _db.prepare(`
+    SELECT e.*,
+           th.trust_score AS trust_score_db,
+           th.delta       AS trust_score_delta_db
+    FROM entities e
+    LEFT JOIN (
+      SELECT entity_id, trust_score, delta
+      FROM trust_history
+      WHERE id IN (
+        SELECT MAX(id) FROM trust_history GROUP BY entity_id
+      )
+    ) th ON th.entity_id = e.entity_id
+    WHERE e.entity_id = ?
+  `);
 
   _stmts.queryAudit = _db.prepare(`
     SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT @limit
@@ -363,6 +432,15 @@ function queryEntities({ type = null, risk_level = null, limit = 500 } = {}) {
     // Parse stored analysis_json back into an object for each row
     const records = rows.map(row => {
       try { row.analysis = JSON.parse(row.analysis_json || '{}'); } catch { row.analysis = {}; }
+      // trust_score_db comes from trust_history JOIN (most authoritative)
+      // fall back to value stored in analysis_json blob
+      row.trust_score = row.trust_score_db
+        ?? row.analysis.trust_score
+        ?? row.analysis.trust_score_after
+        ?? null;
+      row.trust_score_delta = row.trust_score_delta_db
+        ?? row.analysis.trust_score_delta
+        ?? null;
       return row;
     });
 
@@ -384,6 +462,13 @@ function getEntity(entityId) {
     const row = _stmts.getEntity.get(entityId);
     if (row) {
       try { row.analysis = JSON.parse(row.analysis_json || '{}'); } catch { row.analysis = {}; }
+      row.trust_score = row.trust_score_db
+        ?? row.analysis.trust_score
+        ?? row.analysis.trust_score_after
+        ?? null;
+      row.trust_score_delta = row.trust_score_delta_db
+        ?? row.analysis.trust_score_delta
+        ?? null;
     }
     return row || null;
   } catch (err) {
@@ -462,6 +547,105 @@ function queryTrustHistory(entityId) {
 function getDb() { return _db; }
 
 // ---------------------------------------------------------------------------
+// Domain Reputation & Alert Rules
+// ---------------------------------------------------------------------------
+
+function queryDomainReputation(limit = 200) {
+  if (!_ready()) return [];
+  try {
+    const rows = _db.prepare(`
+      SELECT source_url, risk_level, entity_type,
+             json_extract(analysis_json, '$.fake_probability') as fake_prob,
+             json_extract(analysis_json, '$.ai_generated_probability') as ai_prob,
+             detected_at
+      FROM entities
+      WHERE source_url != '' AND source_url IS NOT NULL
+      ORDER BY detected_at DESC
+      LIMIT 10000
+    `).all();
+
+    const domains = {};
+    for (const row of rows) {
+      let hostname = '';
+      try { hostname = new URL(row.source_url).hostname.replace(/^www\./, ''); } catch { continue; }
+      if (!hostname) continue;
+      if (!domains[hostname]) {
+        domains[hostname] = { domain: hostname, total: 0, high: 0, medium: 0, low: 0, types: new Set(), last_seen: row.detected_at, probs: [] };
+      }
+      const d = domains[hostname];
+      d.total++;
+      if (row.risk_level === 'HIGH') d.high++;
+      else if (row.risk_level === 'MEDIUM') d.medium++;
+      else d.low++;
+      d.types.add(row.entity_type);
+      if (row.detected_at > d.last_seen) d.last_seen = row.detected_at;
+      const p = parseFloat(row.fake_prob || row.ai_prob || 0);
+      if (!isNaN(p) && p > 0) d.probs.push(p);
+    }
+
+    return Object.values(domains)
+      .map(d => ({
+        domain: d.domain,
+        total_scans: d.total,
+        high_risk: d.high,
+        medium_risk: d.medium,
+        low_risk: d.low,
+        high_risk_pct: d.total > 0 ? Math.round(d.high / d.total * 100) : 0,
+        types: [...d.types],
+        last_seen: d.last_seen,
+        avg_risk_prob: d.probs.length > 0 ? +(d.probs.reduce((a, b) => a + b, 0) / d.probs.length).toFixed(3) : 0,
+        reputation_score: Math.max(0, Math.round(100 - (d.high / d.total) * 70 - (d.medium / d.total) * 25)),
+      }))
+      .sort((a, b) => b.high_risk_pct - a.high_risk_pct || b.total_scans - a.total_scans)
+      .slice(0, limit);
+  } catch (err) {
+    console.error('[DB] queryDomainReputation error:', err.message);
+    return [];
+  }
+}
+
+function getAlertRules() {
+  if (!_ready()) return [];
+  try {
+    return _db.prepare('SELECT * FROM alert_rules ORDER BY created_at DESC').all().map(r => {
+      try { r.condition = JSON.parse(r.condition_json || '{}'); } catch { r.condition = {}; }
+      try { r.action = JSON.parse(r.action_json || '{}'); } catch { r.action = {}; }
+      return r;
+    });
+  } catch (err) { console.error('[DB] getAlertRules error:', err.message); return []; }
+}
+
+function saveAlertRule(rule) {
+  if (!_ready()) return;
+  try {
+    _db.prepare(`
+      INSERT OR REPLACE INTO alert_rules (rule_id, name, enabled, condition_json, action_json, created_at, trigger_count)
+      VALUES (@rule_id, @name, @enabled, @condition_json, @action_json,
+              COALESCE((SELECT created_at FROM alert_rules WHERE rule_id = @rule_id), strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+              COALESCE((SELECT trigger_count FROM alert_rules WHERE rule_id = @rule_id), 0))
+    `).run({
+      rule_id: rule.rule_id || _uuid(),
+      name: rule.name || 'Unnamed Rule',
+      enabled: rule.enabled !== false ? 1 : 0,
+      condition_json: JSON.stringify(rule.condition || {}),
+      action_json: JSON.stringify(rule.action || {}),
+    });
+  } catch (err) { console.error('[DB] saveAlertRule error:', err.message); }
+}
+
+function deleteAlertRule(ruleId) {
+  if (!_ready()) return;
+  try { _db.prepare('DELETE FROM alert_rules WHERE rule_id = ?').run(ruleId); }
+  catch (err) { console.error('[DB] deleteAlertRule error:', err.message); }
+}
+
+function incrementRuleTriggerCount(ruleId) {
+  if (!_ready()) return;
+  try { _db.prepare('UPDATE alert_rules SET trigger_count = trigger_count + 1 WHERE rule_id = ?').run(ruleId); }
+  catch (err) { console.error('[DB] incrementRuleTriggerCount error:', err.message); }
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
@@ -482,6 +666,13 @@ module.exports = {
   queryLegalSessions,
   getLegalChatHistory,
   queryTrustHistory,
+
+  // Domain reputation & alert rules
+  queryDomainReputation,
+  getAlertRules,
+  saveAlertRule,
+  deleteAlertRule,
+  incrementRuleTriggerCount,
 
   // Escape hatch
   getDb,

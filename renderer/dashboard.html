@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; img-src * data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;">
+  <title>Entity X — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow-x: hidden; font-family: 'Segoe UI', Arial, sans-serif; background: #060c15; color: #dfe7ef; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1a2d45; border-radius: 3px; }
+
+    /* ── TOP BAR ── */
+    .topbar { height: 48px; background: #080f1c; border-bottom: 1px solid #1a2d45; display: flex; align-items: center; padding: 0 18px; gap: 14px; flex-shrink: 0; }
+    .topbar-title { font-size: 12px; font-weight: 700; letter-spacing: .12em; color: #4facfe; text-transform: uppercase; }
+    .topbar-subtitle { font-size: 9px; color: #2d4a62; letter-spacing: .08em; }
+    .back-btn { display: flex; align-items: center; gap: 6px; background: #0d1728; border: 1px solid #1a2d45; border-radius: 4px; color: #4facfe; cursor: pointer; padding: 5px 12px; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .back-btn:hover { background: #122a4c; }
+    .topbar-spacer { flex: 1; }
+    .refresh-btn { background: #0d1728; border: 1px solid #2d4a62; border-radius: 4px; color: #4facfe; cursor: pointer; padding: 5px 14px; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .refresh-btn:hover { background: #122a4c; }
+
+    /* ── DASHBOARD GRID ── */
+    .dashboard { padding: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+
+    /* ── CARD STYLE ── */
+    .card { background: #080f1c; border: 1px solid #1a2d45; border-radius: 8px; padding: 16px; }
+    .card-title { font-size: 9px; font-weight: 700; letter-spacing: .14em; color: #4facfe; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .card-title .icon { font-size: 14px; }
+
+    /* ── STATS ROW ── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; }
+    .stat-box { background: #0a1421; border: 1px solid #1a2d45; border-radius: 6px; padding: 12px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 200; font-variant-numeric: tabular-nums; }
+    .stat-label { font-size: 8px; letter-spacing: .12em; text-transform: uppercase; color: #2d4a62; margin-top: 4px; }
+    .stat-value.blue { color: #4facfe; }
+    .stat-value.green { color: #4ade80; }
+    .stat-value.yellow { color: #fbbf24; }
+    .stat-value.red { color: #ff6b6b; }
+    .stat-value.purple { color: #c084fc; }
+
+    /* ── CHART CONTAINER ── */
+    .chart-container { position: relative; height: 220px; }
+    .chart-container.small { height: 180px; }
+
+    /* ── PERSONS LIST ── */
+    .person-list { max-height: 280px; overflow-y: auto; }
+    .person-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #0a1421; border: 1px solid #1a2d45; border-radius: 6px; margin-bottom: 8px; }
+    .person-item:hover { background: #0d1728; }
+    .person-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #4facfe, #00f2fe); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .person-info { flex: 1; min-width: 0; }
+    .person-name { font-size: 11px; font-weight: 600; color: #dfe7ef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .person-meta { font-size: 8px; color: #2d4a62; letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+    .person-badge { font-size: 8px; padding: 3px 8px; border-radius: 3px; background: rgba(79,172,254,.12); color: #4facfe; border: 1px solid rgba(79,172,254,.25); }
+    .person-badge.client { background: rgba(192,132,252,.12); color: #c084fc; border-color: rgba(192,132,252,.25); }
+    .empty-list { text-align: center; padding: 30px; color: #2d4a62; font-size: 10px; letter-spacing: .1em; }
+
+    /* ── ADD PERSON FORM ── */
+    .add-form { display: flex; gap: 8px; margin-top: 12px; }
+    .add-input { flex: 1; background: #0a1421; border: 1px solid #1a2d45; border-radius: 4px; padding: 8px 12px; color: #dfe7ef; font-size: 10px; outline: none; }
+    .add-input:focus { border-color: #4facfe; }
+    .add-input::placeholder { color: #2d4a62; }
+    .add-btn { background: #4facfe; border: none; border-radius: 4px; color: #060c15; cursor: pointer; padding: 8px 16px; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .add-btn:hover { background: #3d9de8; }
+
+    /* ── ALERTS LIST ── */
+    .alert-list { max-height: 300px; overflow-y: auto; }
+    .alert-item { padding: 12px; background: #0a1421; border: 1px solid #1a2d45; border-radius: 6px; margin-bottom: 8px; }
+    .alert-item.pending { border-left: 3px solid #fbbf24; }
+    .alert-item.confirmed { border-left: 3px solid #ff6b6b; }
+    .alert-item.dismissed { border-left: 3px solid #4ade80; opacity: 0.6; }
+    .alert-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .alert-person { font-size: 11px; font-weight: 600; color: #dfe7ef; }
+    .alert-time { font-size: 8px; color: #2d4a62; }
+    .alert-url { font-size: 9px; color: #4a6a85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; }
+    .alert-url a { color: #4facfe; text-decoration: none; }
+    .alert-url a:hover { text-decoration: underline; }
+    .alert-footer { display: flex; justify-content: space-between; align-items: center; }
+    .alert-similarity { font-size: 9px; color: #fbbf24; }
+    .alert-actions { display: flex; gap: 6px; }
+    .alert-btn { font-size: 8px; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; border: 1px solid; }
+    .alert-btn.confirm { background: rgba(255,107,107,.12); color: #ff6b6b; border-color: rgba(255,107,107,.3); }
+    .alert-btn.dismiss { background: rgba(74,222,128,.1); color: #4ade80; border-color: rgba(74,222,128,.25); }
+    .alert-btn:hover { opacity: 0.8; }
+    .alert-status-badge { font-size: 8px; padding: 2px 8px; border-radius: 3px; text-transform: uppercase; letter-spacing: .06em; }
+    .alert-status-badge.pending { background: rgba(251,191,36,.12); color: #fbbf24; }
+    .alert-status-badge.confirmed { background: rgba(255,107,107,.12); color: #ff6b6b; }
+    .alert-status-badge.dismissed { background: rgba(74,222,128,.1); color: #4ade80; }
+
+    /* ── TABS ── */
+    .tabs { display: flex; gap: 2px; margin-bottom: 12px; }
+    .tab { padding: 6px 14px; font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; background: #0a1421; border: 1px solid #1a2d45; border-radius: 4px; color: #2d4a62; }
+    .tab.active { background: #4facfe; color: #060c15; border-color: #4facfe; }
+    .tab:hover:not(.active) { background: #0d1728; }
+
+    /* ── FULL WIDTH CARD ── */
+    .card.full-width { grid-column: 1 / -1; }
+
+    /* ── FACE RECOGNIZER STATUS ── */
+    .status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 9px; padding: 4px 10px; border-radius: 4px; }
+    .status-indicator.online { background: rgba(74,222,128,.12); color: #4ade80; }
+    .status-indicator.offline { background: rgba(255,107,107,.12); color: #ff6b6b; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .status-dot.online { background: #4ade80; }
+    .status-dot.offline { background: #ff6b6b; }
+
+    /* ── LOADING SPINNER ── */
+    .spinner { width: 20px; height: 20px; border: 2px solid #1a2d45; border-top-color: #4facfe; border-radius: 50%; animation: spin 700ms linear infinite; margin: 20px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ── TOP BAR ── -->
+<div class="topbar">
+  <button class="back-btn" id="back-btn">← Return</button>
+  <div class="topbar-title">📊 Dashboard</div>
+  <div class="topbar-subtitle">Entity Tracking & Analytics</div>
+  <div class="topbar-spacer"></div>
+  <div class="status-indicator" id="face-status">
+    <span class="status-dot"></span>
+    <span id="face-status-text">Checking...</span>
+  </div>
+  <button class="refresh-btn" id="refresh-btn">⟳ Refresh</button>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div class="dashboard">
+
+  <!-- Stats Overview -->
+  <div class="card full-width">
+    <div class="card-title"><span class="icon">📈</span> Detection Overview</div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value blue" id="stat-total">0</div>
+        <div class="stat-label">Total Scans</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value red" id="stat-high">0</div>
+        <div class="stat-label">High Risk</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value yellow" id="stat-medium">0</div>
+        <div class="stat-label">Medium Risk</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value green" id="stat-low">0</div>
+        <div class="stat-label">Low Risk</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value purple" id="stat-persons">0</div>
+        <div class="stat-label">Protected Persons</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value yellow" id="stat-alerts">0</div>
+        <div class="stat-label">Pending Alerts</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detection Timeline Chart -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📉</span> Detection Timeline</div>
+    <div class="chart-container">
+      <canvas id="timeline-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Risk Distribution Chart -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🎯</span> Risk Distribution</div>
+    <div class="chart-container">
+      <canvas id="risk-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Content Type Chart -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📁</span> Content Types</div>
+    <div class="chart-container small">
+      <canvas id="type-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Alert Stats Chart -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🔔</span> Alert Status</div>
+    <div class="chart-container small">
+      <canvas id="alert-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Protected Persons -->
+  <div class="card">
+    <div class="card-title"><span class="icon">👤</span> Protected Persons</div>
+    <div class="tabs">
+      <div class="tab active" data-tab="all">All</div>
+      <div class="tab" data-tab="celebrity">Celebrity</div>
+      <div class="tab" data-tab="client">Client</div>
+    </div>
+    <div class="person-list" id="person-list">
+      <div class="spinner"></div>
+    </div>
+    <div class="add-form">
+      <input type="text" class="add-input" id="add-name" placeholder="Person name..." />
+      <select class="add-input" id="add-category" style="flex: 0 0 100px;">
+        <option value="celebrity">Celebrity</option>
+        <option value="client">Client</option>
+        <option value="public_figure">Public Figure</option>
+        <option value="other">Other</option>
+      </select>
+      <button class="add-btn" id="add-person-btn">+ Add</button>
+    </div>
+  </div>
+
+  <!-- Impersonation Alerts -->
+  <div class="card">
+    <div class="card-title"><span class="icon">⚠️</span> Impersonation Alerts</div>
+    <div class="tabs">
+      <div class="tab active" data-tab="pending">Pending</div>
+      <div class="tab" data-tab="confirmed">Confirmed</div>
+      <div class="tab" data-tab="all">All</div>
+    </div>
+    <div class="alert-list" id="alert-list">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

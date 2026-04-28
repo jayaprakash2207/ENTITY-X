@@ -1,8 +1,9 @@
 """
-trust_engine – per-session trust-score tracking.
+trust_engine – per-session trust-score tracking, persisted to SQLite.
 
 Sessions start at 100.0.  Each detection subtracts
 ``fake_probability * 100`` points (clamped to 0.0 – 100.0).
+Scores survive app restarts via the trust_scores table in data.db.
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import asyncio
 
 class TrustScoreEngine:
     """
-    Asynchronous, per-session trust-score tracker.
+    Asynchronous, per-session trust-score tracker backed by SQLite.
 
     Thread-safe via internal asyncio.Lock.
 
@@ -23,7 +24,6 @@ class TrustScoreEngine:
 
     def __init__(self, initial_score: float = 100.0) -> None:
         self.initial_score = initial_score
-        self._session_scores: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
     async def update_score(
@@ -39,22 +39,28 @@ class TrustScoreEngine:
         Returns:
             (updated_score, deduction) — both as floats rounded to 2 d.p.
         """
+        from backend.db.database import db_get_trust_score, db_set_trust_score
+
         bounded = max(0.0, min(1.0, fake_probability))
-        deduction = round(bounded * 100.0, 2)
+        # Scale deduction to 0–8 points per detection (was 0–100, which drained instantly).
+        # A session full of HIGH-risk content will reach ~0 after ~15–20 detections,
+        # giving a meaningful score that degrades over a real browsing session.
+        deduction = round(min(bounded * 8.0, 8.0), 2)
 
         async with self._lock:
-            current = self._session_scores.get(session_id, self.initial_score)
+            current = await db_get_trust_score(session_id, self.initial_score)
             updated = round(max(0.0, current - deduction), 2)
-            self._session_scores[session_id] = updated
+            await db_set_trust_score(session_id, updated)
 
         return updated, deduction
 
     async def get_score(self, session_id: str) -> float:
         """Return the current trust score for a session (default: initial_score)."""
-        async with self._lock:
-            return self._session_scores.get(session_id, self.initial_score)
+        from backend.db.database import db_get_trust_score
+        return await db_get_trust_score(session_id, self.initial_score)
 
     async def reset_score(self, session_id: str) -> None:
         """Reset a session's trust score back to initial_score."""
+        from backend.db.database import db_set_trust_score
         async with self._lock:
-            self._session_scores[session_id] = self.initial_score
+            await db_set_trust_score(session_id, self.initial_score)

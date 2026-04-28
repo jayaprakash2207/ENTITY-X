@@ -2,46 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sidebar Test</title>
+  <title>Entity X — Sidebar</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #ff00ff; color: white; padding: 20px; margin: 0; font-family: Arial; height: 100%; overflow: hidden; }
-    h1 { background: yellow; color: black; padding: 20px; text-align: center; border: 3px solid red; margin-bottom: 20px; }
-    h2 { color: #4ade80; margin-top: 20px; margin-bottom: 10px; }
-    p { margin: 10px 0; }
-    #app { background: #0f1720; padding: 20px; border-radius: 8px; margin: 10px 0; }
-    #trustScore { font-size: 48px; font-weight: bold; color: #4ade80; text-align: center; background: #0a1117; padding: 20px; border-radius: 8px; }
-    #eventCount { font-size: 16px; text-align: center; color: #98a6ba; }
-    #events { background: #0a1117; padding: 15px; border-radius: 8px; margin-top: 10px; min-height: 100px; border: 2px dashed #2a3f5f; color: #98a6ba; }
+    body {
+      background: #0b0f1a;
+      color: #7a98b0;
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      font-size: 11px;
+      padding: 14px;
+      height: 100%;
+      overflow: hidden;
+    }
+    h2 { font-size: 8px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #2a4056; margin-bottom: 8px; margin-top: 16px; }
+    h2:first-of-type { margin-top: 0; }
+    #trustScore {
+      font-size: 36px; font-weight: 200;
+      color: #2a6848;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      padding: 10px 0;
+    }
+    #status { font-size: 9px; color: #2a6848; letter-spacing: 0.12em; text-transform: uppercase; }
+    #eventCount { font-size: 8.5px; color: #2a4056; margin-top: 4px; }
+    #events {
+      background: #070910;
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 8px;
+      min-height: 80px;
+      color: #2a4056;
+      font-size: 9px;
+      line-height: 1.6;
+    }
+    .ev-item { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .ev-item:last-child { border-bottom: none; }
+    .ev-risk-high   { color: #b85050; }
+    .ev-risk-medium { color: #c08830; }
+    .ev-risk-low    { color: #2a6848; }
   </style>
 </head>
 <body>
-  <h1>✅ IFRAME LOADED ✅</h1>
-  <p>If you see this magenta box in the sidebar, the iframe is working!</p>
-  
-  <div id="app">
-    <h2>Status</h2>
-    <p id="status" style="font-size: 18px; color: #4ade80;">Monitoring Active</p>
-    
-    <h2>Trust Score</h2>
-    <div id="trustScore">100.00</div>
-    
-    <h2>Events</h2>
-    <p id="eventCount">0 events detected</p>
-    <div id="events">Waiting for image analysis...</div>
-  </div>
-  
+  <h2>Status</h2>
+  <p id="status">Monitoring Active</p>
+
+  <h2>Trust Score</h2>
+  <div id="trustScore">100.00</div>
+
+  <h2>Events</h2>
+  <p id="eventCount">0 events detected</p>
+  <div id="events">Awaiting analysis&hellip;</div>
+
   <script>
-    console.log('[SIDEBAR] Iframe successfully loaded');
-    
     window.addEventListener('message', (event) => {
-      console.log('[SIDEBAR] Received postMessage:', event.data);
-      const {payload} = event.data;
-      if (payload) {
-        document.getElementById('eventCount').textContent = 'Image detected: ' + (payload.risk_level || 'UNKNOWN');
-        document.getElementById('trustScore').textContent = payload.trust_score?.toFixed(2) || 'N/A';
-        document.getElementById('events').innerHTML += '<p>Risk: ' + (payload.risk_level || 'N/A') + ' | Fake: ' + ((payload.fake_probability || 0) * 100).toFixed(1) + '%</p>';
-      }
+      const { payload } = event.data || {};
+      if (!payload) return;
+      const risk = (payload.risk_level || '').toUpperCase();
+      const score = (payload.trust_score || 100).toFixed(2);
+
+      document.getElementById('trustScore').textContent = score;
+      document.getElementById('trustScore').style.color =
+        parseFloat(score) >= 80 ? '#2a6848' : parseFloat(score) >= 50 ? '#c08830' : '#b85050';
+
+      const countEl = document.getElementById('eventCount');
+      const prev = parseInt(countEl.textContent, 10) || 0;
+      countEl.textContent = (prev + 1) + ' event' + (prev + 1 !== 1 ? 's' : '') + ' detected';
+
+      const evEl = document.getElementById('events');
+      const item = document.createElement('div');
+      item.className = 'ev-item ev-risk-' + risk.toLowerCase();
+      item.textContent = risk + ' · ' + ((payload.fake_probability || 0) * 100).toFixed(1) + '% synthetic';
+      if (evEl.textContent.startsWith('Awaiting')) evEl.textContent = '';
+      evEl.insertBefore(item, evEl.firstChild);
     });
   </script>
 </body>
