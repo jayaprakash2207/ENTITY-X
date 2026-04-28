@@ -1840,24 +1840,26 @@ let _backendProcess = null;
 
 function startBackend() {
   const projectRoot = __dirname;
+  let spawnArgs, spawnOpts;
 
-  // Prefer the venv Python so all pip-installed packages (fastapi, uvicorn, httpx…)
-  // are available.  Fall back to 'python' if the venv doesn't exist yet.
+  // 1. Production: use the bundled PyInstaller exe packed inside the installer
+  const bundledExe = path.join(process.resourcesPath || '', 'entity_x_backend', 'entity_x_backend.exe');
+  // 2. Development: use the local venv Python
   const venvPython = path.join(projectRoot, '.venv', 'Scripts', 'python.exe');
-  const python = fs.existsSync(venvPython) ? venvPython : 'python';
-  console.log(`[BACKEND] Using Python: ${python}`);
 
-  console.log('[BACKEND] Spawning Python backend (backend.main:app)...');
-  _backendProcess = spawn(python, [
-    '-m', 'uvicorn',
-    'backend.main:app',
-    '--host', '127.0.0.1',
-    '--port', '8000'
-  ], {
-    cwd: projectRoot,
-    stdio: 'pipe',
-    windowsHide: true
-  });
+  if (fs.existsSync(bundledExe)) {
+    console.log(`[BACKEND] Using bundled exe: ${bundledExe}`);
+    spawnArgs = [bundledExe, []];
+    spawnOpts = { stdio: 'pipe', windowsHide: true };
+  } else {
+    const python = fs.existsSync(venvPython) ? venvPython : 'python';
+    console.log(`[BACKEND] Dev mode — using Python: ${python}`);
+    spawnArgs = [python, ['-m', 'uvicorn', 'backend.main:app', '--host', '127.0.0.1', '--port', '8000']];
+    spawnOpts = { cwd: projectRoot, stdio: 'pipe', windowsHide: true };
+  }
+
+  console.log('[BACKEND] Spawning Python backend...');
+  _backendProcess = spawn(spawnArgs[0], spawnArgs[1], spawnOpts);
 
   _backendProcess.stdout.on('data', d => process.stdout.write('[PY] ' + d));
   _backendProcess.stderr.on('data', d => process.stderr.write('[PY] ' + d));

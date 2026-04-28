@@ -14,7 +14,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -39,10 +39,16 @@ jobs:
       - name: Run Python tests
         run: python -m pytest backend/tests/ -q --tb=short --ignore=backend/tests/test_face_recognizer.py --ignore=backend/tests/test_person_registry.py
 
+      - name: Install PyInstaller + backend dependencies (no ML models)
+        run: pip install pyinstaller -r backend/requirements-ci.txt
+
+      - name: Bundle Python backend with PyInstaller
+        run: python -m PyInstaller backend.spec
+
       - name: Build frontend
         run: npm run build
 
-      - name: Build Electron installer
+      - name: Build Electron installer (includes bundled backend)
         run: npx electron-builder --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

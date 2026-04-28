@@ -41,11 +41,9 @@
     ],
     "extraResources": [
       {
-        "from": "data",
-        "to": "data",
-        "filter": [
-          "**/*"
-        ]
+        "from": "dist/entity_x_backend",
+        "to": "entity_x_backend",
+        "filter": ["**/*"]
       }
     ],
     "win": {
