@@ -1,6 +1,6 @@
 {
   "name": "entity-x",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Entity X — AI-powered digital integrity monitor",
   "author": "Jayaprakash A R",
   "license": "MIT",
@@ -36,8 +36,7 @@
       "!**/__pycache__/**",
       "!**/*.pyc",
       "!.venv/**/*",
-      "!.git/**/*",
-      "!.env"
+      "!.git/**/*"
     ],
     "extraResources": [
       {

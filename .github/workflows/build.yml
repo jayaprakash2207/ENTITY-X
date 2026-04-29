@@ -30,6 +30,17 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Write .env with API keys
+        shell: bash
+        run: |
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
+          echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
+          echo "HF_API_KEY=${{ secrets.HF_API_KEY }}" >> .env
+          echo "ENTITY_X_CLOUD_URL=https://entity-x.onrender.com" >> .env
+          echo "NODE_ENV=production" >> .env
+          echo "BACKEND_PORT=8000" >> .env
+
       - name: Install Node dependencies
         run: npm install
 

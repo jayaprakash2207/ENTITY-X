@@ -105,6 +105,64 @@ class RealTextAnalyzer:
     # Model loading
     # ------------------------------------------------------------------
 
+    async def _hf_api_infer(self, text: str, title: str, url: str) -> dict | None:
+        """
+        Call HuggingFace Inference API for AI-text detection when local torch is unavailable.
+        Returns the same dict format as analyze() or None on failure.
+        """
+        import os
+        hf_key = os.environ.get('HF_API_KEY', '')
+        if not hf_key:
+            return None
+
+        import httpx
+
+        # Truncate to model token limit (~512 tokens ≈ 2000 chars)
+        input_text = text[:2000]
+
+        try:
+            api_url = 'https://api-inference.huggingface.co/models/Hello-SimpleAI/chatgpt-detector-roberta'
+            async with httpx.AsyncClient(timeout=40.0) as client:
+                resp = await client.post(
+                    api_url,
+                    json={'inputs': input_text},
+                    headers={'Authorization': f'Bearer {hf_key}'},
+                )
+            if resp.status_code == 200:
+                data = resp.json()
+                # HF returns [[{label, score}, ...]] for text classification
+                items = data[0] if isinstance(data, list) and isinstance(data[0], list) else data
+                scores = {r['label'].lower(): r['score'] for r in items}
+                # Labels: 'chatgpt' (AI) or 'human'
+                ai_prob = scores.get('chatgpt', scores.get('fake', scores.get('ai', 0.5)))
+                ai_prob = round(max(0.0, min(1.0, ai_prob)), 4)
+
+                if ai_prob >= self.HIGH_THRESHOLD:
+                    risk: str = 'HIGH'
+                elif ai_prob >= self.MEDIUM_THRESHOLD:
+                    risk = 'MEDIUM'
+                else:
+                    risk = 'LOW'
+
+                credibility = round(max(0.1, 1.0 - ai_prob * 0.6), 4)
+                logger.info(f'[HF API] chatgpt-detector → AI prob={ai_prob:.2f}')
+                return {
+                    'ai_generated_probability': ai_prob,
+                    'misinformation_risk': risk,
+                    'credibility_score': credibility,
+                    'explanation': [
+                        f'[HF CLOUD ML] HuggingFace chatgpt-detector-roberta (RoBERTa): {ai_prob*100:.1f}% AI-generated.',
+                        f'Risk level: {risk} | Credibility: {credibility*100:.0f}%',
+                        'Analysis performed via HuggingFace Inference API — same model accuracy as local ML.',
+                    ],
+                }
+            elif resp.status_code == 503:
+                logger.info('[HF API] chatgpt-detector model still loading')
+        except Exception as e:
+            logger.warning(f'[HF API] text inference error: {e}')
+
+        return None
+
     async def _ensure_models_loaded(self):
         """Lazy-load all ML models on first use."""
         if self._models_loaded:
@@ -179,6 +237,10 @@ class RealTextAnalyzer:
             return result
 
         if not self._primary_pipe:
+            # Try HuggingFace Inference API (free cloud GPU — no torch needed)
+            hf_result = await self._hf_api_infer(text, title, url)
+            if hf_result is not None:
+                return hf_result
             result = await self._fallback.analyze(text, title, url)
             result["explanation"].insert(0, "[HEURISTIC MODE] ML classifiers not loaded.")
             return result

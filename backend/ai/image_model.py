@@ -363,6 +363,50 @@ class RealDeepfakeAnalyzer:
             logger.debug(f"[image_model] Face detection failed: {e}")
             return None
 
+    async def _hf_api_infer(self, image_bytes: bytes) -> dict | None:
+        """
+        Call HuggingFace Inference API for deepfake detection when local torch is unavailable.
+        Tries multiple models in order; returns {label: score} dict or None on failure.
+        """
+        hf_key = os.environ.get('HF_API_KEY', '')
+        if not hf_key:
+            return None
+
+        import httpx
+
+        models = [
+            'dima806/deepfake_vs_real_image_detection',
+            'haywoodsloan/ai-image-detector-deploy',
+            'umm-maybe/AI-image-detector',
+        ]
+
+        for model in models:
+            try:
+                url = f'https://api-inference.huggingface.co/models/{model}'
+                async with httpx.AsyncClient(timeout=40.0) as client:
+                    resp = await client.post(
+                        url,
+                        content=image_bytes,
+                        headers={
+                            'Authorization': f'Bearer {hf_key}',
+                            'Content-Type': 'application/octet-stream',
+                        },
+                    )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list) and data:
+                        result = {r['label'].lower(): r['score'] for r in data}
+                        logger.info(f'[HF API] {model} → {result}')
+                        return result
+                elif resp.status_code == 503:
+                    logger.info(f'[HF API] {model} still loading, trying next...')
+                else:
+                    logger.warning(f'[HF API] {model} returned {resp.status_code}')
+            except Exception as e:
+                logger.warning(f'[HF API] {model} error: {e}')
+
+        return None
+
     async def _ensure_models_loaded(self) -> bool:
         """Lazy-load models on first use."""
         if self._models_loaded:
@@ -759,7 +803,17 @@ class RealDeepfakeAnalyzer:
                     c2pa_findings=c2pa_findings, exif_findings=exif_findings,
                     face_result=None, face_detected=False,
                 )
-            logger.warning("ML models unavailable, falling back to heuristic analysis")
+            # Try HuggingFace Inference API (free cloud GPU — no torch needed)
+            hf_result = await self._hf_api_infer(image_bytes)
+            if hf_result is not None:
+                logger.info('[HF API] Using cloud inference result for image analysis')
+                return self._build_result(
+                    hf_result, None, None, None, None,
+                    image_url, 1.0, 0, 0, None,
+                    c2pa_findings=c2pa_findings, exif_findings=exif_findings,
+                    face_result=None, face_detected=False,
+                )
+            logger.warning("ML models and HF API unavailable, falling back to heuristic analysis")
             return await self._fallback.analyze(image_bytes, image_url)
         
         try:
