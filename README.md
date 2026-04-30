@@ -1,261 +1,270 @@
 <div align="center">
 
-```
-███████╗███╗   ██╗████████╗██╗████████╗██╗   ██╗    ██╗  ██╗
-██╔════╝████╗  ██║╚══██╔══╝██║╚══██╔══╝╚██╗ ██╔╝    ╚██╗██╔╝
-█████╗  ██╔██╗ ██║   ██║   ██║   ██║    ╚████╔╝      ╚███╔╝ 
-██╔══╝  ██║╚██╗██║   ██║   ██║   ██║     ╚██╔╝       ██╔██╗ 
-███████╗██║ ╚████║   ██║   ██║   ██║      ██║       ██╔╝ ██╗
-╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝   ╚═╝      ╚═╝       ╚═╝  ╚═╝
-```
+<img src="public/icon.png" width="140" alt="Entity X Logo" />
 
-# **Entity X**
-### Real-Time Digital Integrity Intelligence Platform
-*Detect deepfakes. Expose misinformation. Protect the truth.*
+# ENTITY X
 
-[![Status](https://img.shields.io/badge/status-under%20active%20development-orange?style=for-the-badge)](#-project-status)
-[![Electron](https://img.shields.io/badge/Electron-40.x-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://electronjs.org)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![License](https://img.shields.io/badge/license-ISC-blue?style=for-the-badge)](#-license)
-[![GitHub](https://img.shields.io/badge/GitHub-jayaprakash2207-181717?style=for-the-badge&logo=github)](https://github.com/jayaprakash2207/ENTITY-X)
+### AI-Powered Digital Integrity Intelligence Platform
+
+*Detect deepfakes. Expose misinformation. Protect the truth — in real time.*
+
+<br/>
+
+[![Release](https://img.shields.io/github/v/release/jayaprakash2207/ENTITY-X?style=for-the-badge&color=6366f1&label=Latest%20Release)](https://github.com/jayaprakash2207/ENTITY-X/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/jayaprakash2207/ENTITY-X/build.yml?style=for-the-badge&color=22c55e&label=CI%2FCD)](https://github.com/jayaprakash2207/ENTITY-X/actions)
+[![Electron](https://img.shields.io/badge/Electron-36.x-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://electronjs.org)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.129-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![License](https://img.shields.io/badge/License-MIT-f59e0b?style=for-the-badge)](LICENSE.txt)
+
+<br/>
+
+[**⬇️ Download for Windows**](https://github.com/jayaprakash2207/ENTITY-X/releases/latest) · [**📖 Docs**](#-getting-started) · [**🐛 Report Bug**](https://github.com/jayaprakash2207/ENTITY-X/issues) · [**💬 Discussions**](https://github.com/jayaprakash2207/ENTITY-X/discussions)
 
 </div>
 
 ---
 
-## 📑 Table of Contents
+## What is Entity X?
 
-- [About Entity X](#-about-entity-x)
-- [Key Features](#-key-features)
-- [Architecture](#-architecture)
-- [AI Stack](#-ai-stack)
-- [Trust Score System](#-trust-score-system)
-- [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
-- [Configuration](#️-configuration)
-- [API Endpoints](#-api-endpoints)
-- [Security Design](#-security-design)
-- [Legal Intelligence](#-legal-intelligence)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
-- [License](#-license)
+**Entity X** is a desktop application that acts as your personal AI forensic analyst — silently monitoring every image, article, and video you encounter online, scoring them for authenticity in real time.
+
+It embeds a live AI layer into a built-in browser. As you browse, Entity X automatically:
+
+- Scans images for **deepfake manipulation** using a 5-model ML ensemble (ViT + SwinV2 + UniversalFakeDetect + CLIP + SDXL)
+- Detects **AI-generated text** using RoBERTa transformer classifiers
+- Performs **forensic article analysis** via Gemini 2.0 Flash
+- Maintains a live **Trust Score** for your current session
+- Provides **legal guidance and complaint drafting** for digital rights violations
+
+All powered by real AI — no setup, no API keys needed. Just install and use.
 
 ---
 
-## 🎯 About Entity X
+## ✨ Feature Overview
 
-**Entity X** is a desktop-native digital forensics platform engineered for the era of synthetic media. It embeds an AI-driven monitoring layer directly into a live browser experience, **silently analyzing every image and article you encounter** — scoring each for:
+<table>
+<tr>
+<td width="50%">
 
-- 🎬 **Deepfake detection** (image manipulation & synthesis)
-- 🤖 **AI-generated content** (text generation detection)
-- ⚠️ **Misinformation risk** (claim factuality assessment)
-- 🔬 **Forensic evidence** (human-readable explanations)
+### 🔍 Live Detection
+- **Image Deepfake Scanner** — 5-model ensemble (ViT 99.3%, SwinV2 98.1%, UniversalFakeDetect CVPR-2023, CLIP, SDXL detector)
+- **C2PA / EXIF Metadata** — Definitively detects AI tool watermarks (DALL-E, Midjourney, Stable Diffusion, Firefly)
+- **AI Text Detector** — RoBERTa-based chatgpt-detector with statistical ensemble
+- **Video Analyzer** — Frame-level deepfake scoring pipeline
+- **Audio Analyzer** — Voice synthesis detection
+- **News Scanner** — Article provenance and source credibility
 
-All in **real-time**, with a **live Trust Score** that reflects the overall integrity of your digital environment.
+</td>
+<td width="50%">
 
-> 🚧 **Project Status:** Core detection pipelines are fully functional. Video analysis, real ML models, and several advanced features are on the development roadmap.
+### 🧠 Intelligence
+- **Forensic Lab** — Deep-dive forensic evidence viewer
+- **Investigation Mode** — Per-entity detailed analysis
+- **Audit History** — Full session detection timeline
+- **Trust Score Engine** — Live session integrity metric (0–100)
+- **Watchlist Monitor** — Track and alert on specific entities
+- **Domain Intelligence** — Domain reputation analysis
+- **Provenance Chain** — Content origin tracing
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### ⚖️ Legal Intelligence
+- **Complaint Generator** — AI-drafted platform/authority complaint letters
+- **Legal Chat Assistant** — Jurisdiction-aware guidance (India / EU / Global)
+- **Evidence Packager** — Structured forensic evidence for proceedings
+- **Judge Report Generator** — Court-ready forensic reports
+- Laws covered: IT Act 2000, IPC, GDPR, EU AI Act, DSA, UK OSB, US CDA §230
+
+</td>
+<td width="50%">
+
+### 🛡️ Monitoring & Alerts
+- **Alert Rules Engine** — Custom rules with real-time toast notifications
+- **Social Scanner** — Social media content monitoring
+- **Creator Shield** — Protect original content from misuse
+- **Threat Map** — Geographic threat visualization
+- **Case Manager** — Organize investigations into cases
+- **Community DB** — Shared threat intelligence database
+- **PDF Analyzer** — Document forensics and AI detection
+
+</td>
+</tr>
+</table>
 
 ---
 
-## ✨ Key Features
+## 🤖 AI & ML Stack
 
-### Detection & Monitoring
+Entity X uses a **multi-tier AI strategy** — production-grade models with intelligent cloud fallbacks:
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 🖼️ **Image Deepfake Detector** | Heuristic-based forensic scoring of images for synthetic manipulation | ✅ Active |
-| 📰 **Article Analyzer** | AI-generation probability + misinformation risk scoring + claim extraction | ✅ Active |
-| 🛡️ **Live Trust Score** | Per-session integrity metric that degrades with each suspicious detection | ✅ Active |
-| 🔬 **Forensic Explainability** | Human-readable forensic annotations for every detection | ✅ Active |
+### Image Deepfake Detection
 
-### Legal & Compliance
+| Tier | Model | Accuracy | Method |
+|------|-------|----------|--------|
+| Primary | `dima806/deepfake_vs_real_image_detection` (ViT) | **99.3%** | HuggingFace Inference API |
+| Secondary | `haywoodsloan/ai-image-detector-deploy` (SwinV2) | **98.1%** | HuggingFace Inference API |
+| Research | UniversalFakeDetect (CLIP ViT-L/14, CVPR 2023) | State-of-art | Local / HF API |
+| Supplementary | `umm-maybe/AI-image-detector` (CLIP) | — | HuggingFace Inference API |
+| Supplementary | `Organika/sdxl-detector` | — | HuggingFace Inference API |
+| Metadata | C2PA / EXIF / PNG watermark scan | **100%** (when present) | Built-in (Pillow) |
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| ⚖️ **Complaint Generator** | AI-drafted neutral content review requests for platforms & authorities | ✅ Active |
-| 🧑‍⚖️ **Legal Chat Assistant** | Jurisdiction-aware (India/Global/Both) legal guidance & regulations | ✅ Active |
-| 📋 **Evidence Packager** | Structured forensic evidence compilation for legal proceedings | ✅ Active |
+### Text & Article Analysis
 
-### Investigation & History
+| Model | Purpose | Provider |
+|-------|---------|---------|
+| `Hello-SimpleAI/chatgpt-detector-roberta` | AI text detection | HuggingFace Inference API |
+| Gemini 2.0 Flash | Full forensic article analysis | Google AI Studio |
+| Statistical ensemble | Burstiness, vocabulary, pattern analysis | Built-in |
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 🗂️ **Entity Investigation** | Deep-dive view for every flagged entity with detailed forensic data | ✅ Active |
-| 📊 **Detection History** | Session-based detection history with export capabilities | ✅ Active |
-| 🔍 **Content Discovery** | Automatic URL-type classification (image/article/video) | ✅ Active |
+### Language Models (Chat, Legal, Copilot)
 
-### Planned Features
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 🎬 **Video Scanner** | Frame-level deepfake analysis for video content | 🚧 Planned |
-| 📡 **News Scanner** | Article provenance & source credibility pipeline | 🚧 Planned |
-| 🤖 **Real ML Models** | Integration of Hugging Face deepfake & text classifiers | 🚧 Planned |
-| 📱 **Browser Extension** | Chrome/Firefox companion extension | 🚧 Planned |
+| Model | Use Case | Provider |
+|-------|---------|---------|
+| DeepSeek R1 / DeepSeek Chat | Primary reasoning | OpenRouter (free) |
+| Gemma 3 27B / 12B | Fallback LLM | OpenRouter (free) |
+| Mistral Small 3.1 24B | Legal generation | OpenRouter (free) |
+| Llama 4 Scout / Llama 3.3 70B | Fallback chain | OpenRouter (free) |
+| Gemini 2.0 Flash | Chat fallback | Google AI Studio |
+| Pollinations.ai | Last-resort fallback | No key required |
+| Groq (Llama 3.3 70B) | Ultra-fast inference | Groq Cloud |
 
 ---
 
 ## 🏗️ Architecture
 
-Entity X is a **two-process desktop application** with clear separation of concerns:
-
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│                      ELECTRON APP (Node.js)                        │
-│                                                                    │
-│  ┌──────────────────┐         IPC          ┌─────────────────┐    │
-│  │ Main Process     │◄───────────────────►│ Renderer Process │    │
-│  │ (main.js)        │                     │ (HTML/CSS/JS UI)│    │
-│  │                  │                     │                 │    │
-│  │ • AI Integration │                     │ ┌─────────────┐ │    │
-│  │ • DB Layer       │                     │ │ Live Monitor│ │    │
-│  │ • Backend Spawn  │                     │ │ Entity View │ │    │
-│  │ • System Calls   │                     │ │ History     │ │    │
-│  └────────┬─────────┘                     │ └─────────────┘ │    │
-│           │                               └─────────────────┘    │
-│           │ HTTP (localhost:8000)                                 │
+┌─────────────────────────────────────────────────────────────────┐
+│                    ELECTRON DESKTOP APP                          │
+│                                                                  │
+│  ┌─────────────────┐   IPC    ┌──────────────────────────────┐  │
+│  │  Main Process   │◄────────►│      Renderer (React)        │  │
+│  │  (main.js)      │          │                              │  │
+│  │                 │          │  Live Browser  │  20+ Pages  │  │
+│  │  • AI Calls     │          │  (WebView)     │  (Features) │  │
+│  │  • Gemini API   │          │                              │  │
+│  │  • OpenRouter   │          └──────────────────────────────┘  │
+│  │  • Groq API     │                                            │
+│  │  • SQLite DB    │                                            │
+│  │  • Auto-updater │                                            │
+│  └────────┬────────┘                                            │
 └───────────┼─────────────────────────────────────────────────────┘
-            │
-┌───────────▼──────────────────────────────────────────────────────┐
-│              PYTHON BACKEND (FastAPI + Async)                    │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ API ROUTES                                               │   │
-│  ├──────────────────────────────────────────────────────────┤   │
-│  │ POST /api/image-monitor        → Image Deepfake Scanner │   │
-│  │ POST /api/text-monitor         → Article Analyzer       │   │
-│  │ POST /api/legal/generate       → Complaint Generator    │   │
-│  │ POST /api/legal/chat           → Legal Chat Assistant   │   │
-│  │ GET  /api/history              → Detection History      │   │
-│  │ GET  /api/health               → Liveness Probe         │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │ AI Analyzers │  │ Trust Engine │  │ DB Layer     │           │
-│  │ (ML Models)  │  │ (Scoring)    │  │ (In-Memory)  │           │
-│  └──────────────┘  └──────────────┘  └──────────────┘           │
+            │ HTTPS
+            ▼
+┌───────────────────────────────────────────────────────────────┐
+│           CLOUD BACKEND  (Render.com · Docker · FastAPI)       │
+│                  https://entity-x.onrender.com                 │
+│                                                                │
+│  /api/image-monitor  →  ViT + SwinV2 via HF Inference API     │
+│  /api/text-monitor   →  RoBERTa via HF Inference API          │
+│  /api/news-scanner   →  Article scraping + analysis           │
+│  /api/legal/*        →  Legal chat + complaint generation      │
+│  /api/health         →  Liveness probe                        │
+│                                                                │
+│  Trust Engine  │  SQLite History  │  Watchlist  │  Alerts     │
 └───────────────────────────────────────────────────────────────┘
 ```
 
 ### Technology Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Desktop UI** | Electron 40.x | Cross-platform desktop app |
-| **Rendering** | HTML5/CSS3/JavaScript | Modern responsive UI |
-| **Backend** | FastAPI 0.115+ | Async REST API |
-| **Language** | Python 3.10+ | Core AI logic & analysis |
-| **Database** | better-sqlite3 | Local session history |
-| **IPC** | Electron IPC | Main ↔ Renderer communication |
-
----
-
-## 🤖 AI Stack
-
-Entity X uses a **multi-model strategy** with intelligent fallbacks for resilience:
-
-### Primary Models
-
-| Purpose | Model | API | Status |
-|---------|-------|-----|--------|
-| **Full Article Analysis** | Google Gemini 2.0 Flash | Google AI Studio | ✅ Active |
-| **Legal Generation** | OpenRouter (Dynamic) | OpenRouter API | ✅ Active |
-| **Fallback Models** | Llama 3.x, Gemma-3, LFM-2.5 | OpenRouter | ✅ Active |
-
-### Detection Strategies
-
-| Component | Current Method | Planned | Status |
-|-----------|----------------|---------|--------|
-| **Image Deepfakes** | Heuristic (SHA-256 + Entropy) | Real ML Model | 🚧 Planned |
-| **AI Text Detection** | Vocabulary + Domain Signals | Transformer Classifier | 🚧 Planned |
-| **Misinformation** | Claim Extraction + Scoring | Fact-Check DB Integration | 🚧 Planned |
-| **Video Analysis** | *Not yet implemented* | Frame-level deepfake scoring | 🚧 Planned |
-
-### Environment Configuration
-
-All AI API keys are managed through **environment variables** (never hard-coded):
-
-```bash
-GEMINI_API_KEY="AIza..."
-OPENROUTER_API_KEY="sk-or-v1-..."
-```
-
-If not set, the application uses bundled development keys (intended for demo/testing only).
+| Layer | Technology |
+|-------|-----------|
+| Desktop | Electron 36.x + Node.js |
+| Frontend | React 18 + Vite + Tailwind CSS |
+| Backend | FastAPI 0.129 + uvicorn (Python 3.11) |
+| Database | better-sqlite3 (Electron) + SQLite (Python) |
+| Cloud Hosting | Render.com (Docker) |
+| CI/CD | GitHub Actions → GitHub Releases |
+| Installer | electron-builder NSIS (Windows x64) |
+| Auto-update | electron-updater (GitHub Releases) |
 
 ---
 
 ## 🛡️ Trust Score System
 
-Every browsing session starts with a **Trust Score of 100** (0–100 range).
-
-### Scoring Mechanism
+Every session starts at **100/100**. As you browse, it degrades with each suspicious detection:
 
 ```
-trust_score -= fake_probability × 100   (result clamped to 0–100)
+trust_score -= fake_probability × 100   (clamped to 0–100)
 ```
 
-**Examples:**
-- Image flagged as 75% deepfake → Trust Score drops by 75 points
-- Article detected as 40% AI-generated → Trust Score drops by 40 points
-- Clean content detected → No change
-
-### Interpretation
-
-| Score | Interpretation |
-|-------|-----------------|
-| **90–100** | High integrity; minimal suspicious content |
-| **70–89** | Moderate; some flagged items encountered |
-| **50–69** | Caution; multiple suspicious detections |
-| **0–49** | Severe; heavy misinformation/deepfakes detected |
-
-The Trust Score **reflects your cumulative digital environment** — a living measure of the truth you've encountered in your current session.
+| Score | Status |
+|-------|--------|
+| 🟢 90–100 | High integrity |
+| 🟡 70–89 | Some suspicious content |
+| 🟠 50–69 | Multiple detections — caution |
+| 🔴 0–49 | Heavy deepfake / misinformation activity |
 
 ---
 
-## ⚖️ Legal Intelligence Module
+## ⬇️ Installation
 
-### Complaint Generator
+### Option A — Download Installer (Recommended)
 
-Generates **neutral, non-accusatory** content review request drafts suitable for:
-- Platform reporting (YouTube, Facebook, Twitter, TikTok)
-- Cybercrime cells & law enforcement
-- Court filings & legal proceedings
+1. Go to [**Releases**](https://github.com/jayaprakash2207/ENTITY-X/releases/latest)
+2. Download `Entity-X-Setup-x.x.x.exe`
+3. Run the installer → Launch Entity X
+4. Everything works out of the box — cloud backend + all AI features included
 
-### Legal Chat Assistant
+> No Python, no API keys, no setup required.
 
-Jurisdiction-aware guidance covering:
+### Option B — Run from Source (Developers)
 
-#### 🇮🇳 **India**
-- IT Act 2000 (sections 66, 67, 67A, 67B)
-- Indian Penal Code (defamation, identity theft)
-- IT (Intermediary) Rules 2021
-- Press Council Act 1978
+```bash
+# 1. Clone
+git clone https://github.com/jayaprakash2207/ENTITY-X.git
+cd ENTITY-X
 
-#### 🌍 **Global**
-- GDPR (EU data protection)
-- Digital Services Act (EU)
-- EU AI Act & Online Safety Regulations
-- UK Online Safety Bill 2023
-- US Section 230 (CDA)
+# 2. Install Node dependencies
+npm install
 
-#### **Supported Scenarios**
-- `DEEPFAKE` — Face/voice synthesis misuse
-- `IMAGE_MISUSE` — Photo manipulation & false context
-- `DEFAMATION` — False statements causing harm
-- `FAKE_NEWS` — Misinformation & disinformation
-- `IMPERSONATION` — Identity fraud & account takeover
-- `GENERIC` — General legal information
+# 3. Set up Python venv
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS/Linux
+pip install -r backend/requirements.txt
 
-### ⚠️ Important Disclaimer
+# 4. Configure API keys (.env file)
+cp .env.example .env
+# Edit .env and add your keys
 
-**Entity X does NOT provide legal advice.** All outputs are:
-- ✅ Informational only
-- ✅ Jurisdiction-specific guidance
-- ✅ General education on relevant laws
-- ❌ NOT a substitute for professional legal counsel
+# 5. Launch
+npm start
+```
 
-Every output includes a **mandatory disclaimer** reminding users to consult actual attorneys.
+---
+
+## ⚙️ Configuration
+
+Create a `.env` file in the project root (copy from `.env.example`):
+
+```env
+# AI Keys — get these for free:
+GEMINI_API_KEY=        # aistudio.google.com (free)
+OPENROUTER_API_KEY=    # openrouter.ai (free)
+GROQ_API_KEY=          # console.groq.com (free)
+HF_API_KEY=            # huggingface.co/settings/tokens (free)
+
+# Cloud backend (set automatically in production builds)
+ENTITY_X_CLOUD_URL=https://entity-x.onrender.com
+
+# Leave empty to force local backend in dev
+# ENTITY_X_CLOUD_URL=
+```
+
+---
+
+## 🔒 Security
+
+- **Electron hardening** — context isolation, sandbox, `setPermissionRequestHandler`, `setCertificateVerifyProc`, `setWindowOpenHandler`
+- **SSRF protection** — blocks private IP ranges (10.x, 192.168.x, 127.x, 172.16.x) in all image fetches
+- **Content-Type + magic-byte validation** — images verified at byte level before processing
+- **10 MB size cap** — on all image downloads
+- **No hard-coded secrets** — all keys via environment variables, never in source
+- **Rate limiting** — `slowapi` on all backend endpoints
 
 ---
 
@@ -263,449 +272,102 @@ Every output includes a **mandatory disclaimer** reminding users to consult actu
 
 ```
 ENTITY-X/
+├── main.js                    # Electron main process (AI calls, IPC, backend spawn)
+├── preload.js                 # Secure contextBridge (IPC bridge to renderer)
+├── db.js                      # SQLite database layer
+├── Dockerfile                 # Cloud backend container
+├── render.yaml                # Render.com deployment config
 │
-├── 📄 main.js                      # Electron main process entry point
-├── 📄 preload.js                   # Secure IPC bridge (contextBridge)
-├── 📄 db.js                        # SQLite database layer
-├── 📄 package.json                 # Node.js dependencies
+├── renderer/                  # React frontend (20+ pages)
+│   ├── App.jsx                # Root component + routing
+│   ├── components/            # BrowserShell, TabBar, ChatPanel, DetectionFeed
+│   └── pages/                 # ControlCenter, Investigation, ForensicLab,
+│                              #   LegalGenerator, TextAnalyzer, VideoAnalyzer,
+│                              #   AudioAnalyzer, DomainReputation, AlertRules,
+│                              #   SocialScanner, CreatorShield, ThreatMap,
+│                              #   CaseManager, CommunityDB, Newsroom,
+│                              #   TrustBadge, WatchlistMonitor, PDFAnalyzer,
+│                              #   ProvenanceChain, AuditHistory
 │
-├── 📂 renderer/                    # Electron Renderer Process (Frontend)
-│   ├── 📄 index.html               # Main app shell & navigation
-│   ├── 📄 index.js                 # Main renderer logic
-│   ├── 📄 sidebar.html/js          # Real-time detection sidebar
-│   ├── 📄 entity-view.html/js      # Deep-dive investigation view
-│   ├── 📄 history.html/js          # Detection history browser
-│   ├── 📄 style.css                # Global styling
-│   └── 📄 webview-preload.js       # Content injection for browsers
+├── backend/                   # FastAPI Python backend
+│   ├── main.py                # API routes + app factory
+│   ├── ai/
+│   │   ├── image_model.py     # 5-model deepfake ensemble + HF API fallback
+│   │   ├── text_model.py      # RoBERTa AI-text detector + HF API fallback
+│   │   └── video_model.py     # Video frame analysis pipeline
+│   ├── monitor/               # image_scanner, news_scanner, video_scanner
+│   ├── trust/                 # trust_engine.py (session scoring)
+│   ├── legal/                 # guidance, complaint_drafter, legal_chat, judge_report
+│   ├── db/                    # database.py (detection history)
+│   └── tests/                 # 115+ unit tests
 │
-├── 📂 backend/                     # Python FastAPI Backend
-│   ├── 📄 main.py                  # FastAPI app + all route definitions
-│   ├── 📄 app.py                   # FastAPI application factory
-│   ├── 📄 requirements.txt          # Python package dependencies
-│   │
-│   ├── 📂 ai/                      # AI Model Layer
-│   │   ├── 📄 image_model.py       # Deepfake image analyzer
-│   │   ├── 📄 text_model.py        # AI-text + misinformation detector
-│   │   └── 📄 video_model.py       # Video analyzer (stub)
-│   │
-│   ├── 📂 forensic/                # Explainability & Evidence
-│   │   └── 📄 explainability.py    # Forensic annotation enrichment
-│   │
-│   ├── 📂 monitor/                 # Content Scanning & Discovery
-│   │   ├── 📄 image_scanner.py     # SSRF-safe image fetcher
-│   │   ├── 📄 content_discovery.py # URL-type classifier
-│   │   ├── 📄 news_scanner.py      # News scraper (stub)
-│   │   └── 📄 video_scanner.py     # Video scanner (stub)
-│   │
-│   ├── 📂 trust/                   # Trust Score Engine
-│   │   └── 📄 trust_engine.py      # Async per-session trust scoring
-│   │
-│   ├── 📂 db/                      # Data Layer
-│   │   └── 📄 database.py          # In-memory detection history
-│   │
-│   └── 📂 utils/                   # Utilities
-│       └── 📄 scheduler.py         # Background task scheduler
-│
-└── 📂 legal/                       # Legal Pipeline (Top-level Package)
-    ├── 📄 guidance.py              # Orchestrator: build_legal_output()
-    ├── 📄 complaint_drafter.py     # Complaint text formatter
-    ├── 📄 evidence_packager.py     # Evidence block builder
-    ├── 📄 legal_chat.py            # Legal chat pipeline
-    └── 📄 disclaimer.py            # Mandatory disclaimer string
+└── .github/workflows/
+    └── build.yml              # CI: test → PyInstaller → Vite → electron-builder → release
 ```
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-Before you begin, ensure you have:
-
-- **Node.js** 18.0 or higher
-- **npm** 9.0 or higher
-- **Python** 3.10 or higher
-- **Git**
-
-### Step 1: Clone the Repository
+## 🧪 Running Tests
 
 ```bash
-git clone https://github.com/jayaprakash2207/ENTITY-X.git
-cd ENTITY-X
-```
-
-### Step 2: Install Node Dependencies
-
-```bash
-npm install
-```
-
-### Step 3: Set Up Python Backend
-
-Navigate to the backend directory and create a virtual environment:
-
-```bash
-cd backend
-```
-
-**On Windows (PowerShell):**
-```powershell
-python -m venv .venv
+# Activate venv first
 .venv\Scripts\activate
-pip install -r requirements.txt
+
+# Run all tests (excludes heavy face recognition deps)
+python -m pytest backend/tests/ -q --tb=short \
+  --ignore=backend/tests/test_face_recognizer.py \
+  --ignore=backend/tests/test_person_registry.py
 ```
 
-**On macOS / Linux:**
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Step 4: Configure API Keys (Optional)
-
-Set environment variables for AI API keys. If not set, development keys are used.
-
-**Windows (PowerShell):**
-```powershell
-$env:GEMINI_API_KEY="AIza..."
-$env:OPENROUTER_API_KEY="sk-or-v1-..."
-```
-
-**macOS / Linux:**
-```bash
-export GEMINI_API_KEY="AIza..."
-export OPENROUTER_API_KEY="sk-or-v1-..."
-```
-
-### Step 5: Start the Python Backend
-
-From the project root (parent of `backend/` directory):
-
-```bash
-uvicorn backend.main:app --reload --port 8000
-```
-
-✅ Backend is running! Check interactive API docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
-### Step 6: Launch the Electron App
-
-Open a **new terminal** in the project root:
-
-```bash
-npm start
-```
-
-🎉 Entity X desktop app should now launch!
-
----
-
-## ⚙️ Configuration
-
-All configuration is managed via **environment variables**. Never hard-code sensitive credentials.
-
-### Environment Variables
-
-| Variable | Purpose | Default | Notes |
-|----------|---------|---------|-------|
-| `GEMINI_API_KEY` | Google Gemini 2.0 Flash API key | Bundled dev key | Get from [Google AI Studio](https://aistudio.google.com) |
-| `OPENROUTER_API_KEY` | OpenRouter API key (legal AI + chat) | Bundled dev key | Get from [OpenRouter](https://openrouter.ai) |
-| `IMAGE_MONITOR_API_URL` | Custom image analyzer endpoint | `http://127.0.0.1:8000/api/image-monitor` | Override if backend on different host |
-| `TEXT_MONITOR_API_URL` | Custom text analyzer endpoint | `http://127.0.0.1:8000/api/text-monitor` | Override if backend on different host |
-| `BACKEND_TIMEOUT` | HTTP timeout (seconds) | `30` | Increase for slow networks |
-
-### Example Configuration
-
-**Windows (PowerShell):**
-```powershell
-$env:GEMINI_API_KEY="AIza1234567890abcdefghij"
-$env:OPENROUTER_API_KEY="sk-or-v1-abcdef1234567890"
-$env:BACKEND_TIMEOUT="60"
-npm start
-```
-
-**macOS / Linux (.env file):**
-```bash
-# Create .env file in project root
-GEMINI_API_KEY=AIza1234567890abcdefghij
-OPENROUTER_API_KEY=sk-or-v1-abcdef1234567890
-BACKEND_TIMEOUT=60
-```
-
-Then load and start:
-```bash
-source .env
-npm start
-```
-
----
-
-## 🔌 API Endpoints
-
-### Image Analysis
-
-**POST** `/api/image-monitor`
-
-Analyze an image for deepfake indicators.
-
-```json
-{
-  "image_url": "https://example.com/image.jpg"
-}
-```
-
-**Response:**
-```json
-{
-  "deepfake_probability": 0.75,
-  "fake_indicators": ["unusual_edge_artifacts", "inconsistent_lighting"],
-  "forensic_details": "Image contains signs of blending artifacts...",
-  "confidence": 0.82
-}
-```
-
-### Text / Article Analysis
-
-**POST** `/api/text-monitor`
-
-Analyze article content for AI generation & misinformation.
-
-```json
-{
-  "content": "Full article text here...",
-  "title": "Article Title"
-}
-```
-
-**Response:**
-```json
-{
-  "ai_generated_probability": 0.45,
-  "misinformation_risk": 0.62,
-  "claims": ["Claim 1", "Claim 2"],
-  "summary": "Summary of findings",
-  "risk_level": "medium"
-}
-```
-
-### Legal Complaint Generation
-
-**POST** `/api/legal/generate`
-
-Generate a complaint draft.
-
-```json
-{
-  "content_type": "deepfake",
-  "platform": "youtube",
-  "description": "Deepfake video of public figure..."
-}
-```
-
-**Response:**
-```json
-{
-  "complaint_text": "Dear Platform Team...",
-  "evidence_summary": "...",
-  "jurisdiction": "global"
-}
-```
-
-### Legal Chat
-
-**POST** `/api/legal/chat`
-
-Get legal guidance on a scenario.
-
-```json
-{
-  "scenario": "deepfake",
-  "jurisdiction": "india",
-  "question": "What are my legal options?"
-}
-```
-
-**Response:**
-```json
-{
-  "guidance": "In India under the IT Act 2000...",
-  "relevant_laws": ["IT Act 2000 §67", "IPC §500"],
-  "disclaimer": "This is not legal advice..."
-}
-```
-
-### Detection History
-
-**GET** `/api/history`
-
-Retrieve session detection history.
-
-**Response:**
-```json
-{
-  "detections": [
-    {
-      "id": "uuid",
-      "timestamp": "2024-03-21T10:30:00Z",
-      "type": "image",
-      "url": "https://...",
-      "result": {...}
-    }
-  ],
-  "session_id": "uuid",
-  "trust_score": 72
-}
-```
-
-### Health Check
-
-**GET** `/api/health`
-
-Verify backend is running.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "backend_ready": true
-}
-```
-
----
-
-## 🔒 Security Design
-
-Entity X implements multiple security layers:
-
-### Network Security
-
-- ✅ **SSRF Protection** — All image/file fetching blocks private IP ranges:
-  - `10.0.0.0/8`
-  - `192.168.0.0/16`
-  - `127.0.0.0/8`
-  - `172.16.0.0/12`
-
-- ✅ **Content-Type Validation** — Only accepted MIME types:
-  - `image/jpeg`, `image/png`, `image/webp`
-  - `image/gif`, `image/bmp`, `image/tiff`
-
-- ✅ **Magic-Byte Verification** — File headers checked against declared type
-
-- ✅ **Size Limits** — Hard cap of **10 MB** per image download
-
-### Application Security
-
-- ✅ **Electron Context Isolation** — Renderer & main processes fully isolated
-- ✅ **Preload Script Hardening** — Only safe APIs exposed via `contextBridge`
-- ✅ **No Eval or Dynamic Code** — No `eval()`, `Function()`, or `innerHTML` abuse
-- ✅ **Content Security Policy** — Strict CSP headers on all responses
-- ✅ **Input Validation** — All user inputs sanitized before processing
-
-### Legal Compliance
-
-- ✅ **No Accusations** — System never claims illegality or accuses individuals
-- ✅ **Mandatory Disclaimers** — All legal outputs include warnings
-- ✅ **Informational Only** — Legal module is educational, not advisory
-- ✅ **User Consent** — Clear disclosure of data collection & monitoring
+115 tests · 3 pre-existing skips (optional face recognition module)
 
 ---
 
 ## 🗺️ Roadmap
 
-### Near-term (Q2 2024)
-
-- [ ] Real deepfake ML models (Hugging Face classifiers)
-- [ ] Video frame-level analysis pipeline
-- [ ] Persistent detection database (cross-session history)
-- [ ] Electron auto-updater
-
-### Medium-term (Q3 2024)
-
-- [ ] News article provenance & source credibility
-- [ ] Packaged installers (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`)
+- [x] Real ML image deepfake detection (ViT + SwinV2 + CVPR-2023 model)
+- [x] Real ML text AI detection (RoBERTa)
+- [x] Cloud backend (Render.com)
+- [x] Windows installer (electron-builder NSIS)
+- [x] Auto-updater (electron-updater)
+- [x] CI/CD pipeline (GitHub Actions)
+- [x] 20+ feature pages
+- [ ] macOS `.dmg` installer
 - [ ] Browser extension (Chrome / Firefox)
-- [ ] Dashboard with analytics & trends
-
-### Long-term (Q4 2024+)
-
-- [ ] Multi-language UI support
-- [ ] Real-time news feed monitoring
-- [ ] Integration with fact-check databases
-- [ ] Mobile app (iOS / Android)
-- [ ] API access for enterprise clients
+- [ ] Mobile companion app
+- [ ] Multi-language UI
+- [ ] Fact-check database integration
+- [ ] Enterprise API access
 
 ---
 
 ## 🤝 Contributing
 
-Entity X is under **active development** and contributions are welcome!
-
-### Contribution Process
-
-1. **Fork** the repository
-2. **Create** a feature branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. **Commit** with descriptive messages:
-   ```bash
-   git commit -m "feat: add deepfake model integration"
-   ```
-4. **Push** to your fork:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-5. **Open** a Pull Request with detailed description
-
-### Development Guidelines
-
-- **Code Style** — Follow PEP 8 (Python) & ESLint (JavaScript)
-- **Testing** — Include tests for new features
-- **Documentation** — Update docs for API changes
-- **Commits** — Use conventional commit format
-- **Reviews** — Be open to feedback and discussion
-
-### Areas We Need Help With
-
-- 🎯 ML model integration
-- 🎬 Video analysis implementation
-- 📱 Browser extension development
-- 🌍 Localization & translations
-- 📊 UI/UX improvements
-- 🧪 Testing & QA
+1. Fork the repo
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit: `git commit -m "feat: add amazing feature"`
+4. Push: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ---
 
 ## 📜 License
 
-This project is licensed under the **ISC License**.
+MIT License — see [LICENSE.txt](LICENSE.txt) for details.
 
-See [LICENSE](LICENSE) for full details.
-
-```
-ISC License
-
-Permission to use, copy, modify, and/or distribute this software
-for any purpose with or without fee is hereby granted...
-```
-
----
-
-## 📞 Support & Contact
-
-- **GitHub Issues** — [Report bugs](https://github.com/jayaprakash2207/ENTITY-X/issues)
-- **Discussions** — [Ask questions](https://github.com/jayaprakash2207/ENTITY-X/discussions)
-- **Author** — [@jayaprakash2207](https://github.com/jayaprakash2207)
+Copyright © 2026 **Jayaprakash A R**
 
 ---
 
 <div align="center">
 
-### Built with ⚡ by the Entity X Team
+<img src="public/icon.png" width="60" alt="Entity X" />
 
 **Entity X** — *Because the truth deserves a defender.*
 
-![Entity X Banner](https://img.shields.io/badge/Entity%20X-Digital%20Integrity%20Platform-blueviolet?style=for-the-badge)
+Made with ⚡ by [Jayaprakash A R](https://github.com/jayaprakash2207)
+
+[![GitHub stars](https://img.shields.io/github/stars/jayaprakash2207/ENTITY-X?style=social)](https://github.com/jayaprakash2207/ENTITY-X/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/jayaprakash2207/ENTITY-X?style=social)](https://github.com/jayaprakash2207/ENTITY-X/network/members)
 
 </div>
