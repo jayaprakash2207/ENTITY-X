@@ -381,12 +381,10 @@ class RealDeepfakeAnalyzer:
 
         prompt = (
             "Analyze this image for signs of AI generation, deepfake manipulation, or "
-            "synthetic content. Consider: unnatural textures, lighting inconsistencies, "
-            "GAN/diffusion artifacts, blurry boundaries, EXIF anomalies, overly smooth skin, "
-            "unnatural bokeh, or watermarks from AI tools.\n\n"
-            "Return ONLY valid JSON, no explanation:\n"
-            '{"fake_probability": <float 0-1>, "is_ai_generated": <bool>, '
-            '"confidence": <float 0-1>, "key_signals": [<string>, ...]}'
+            "synthetic content. Check: unnatural textures, lighting inconsistencies, "
+            "GAN/diffusion artifacts, blurry boundaries, overly smooth skin, or AI tool watermarks.\n\n"
+            'Reply with ONLY this JSON (no markdown, no explanation):\n'
+            '{"fake_probability":0.0,"is_ai_generated":false,"key_signals":["signal1"]}'
         )
 
         try:
@@ -402,9 +400,8 @@ class RealDeepfakeAnalyzer:
                                 {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}},
                             ],
                         }],
-                        'max_tokens': 150,
+                        'max_tokens': 120,
                         'temperature': 0.0,
-                        'response_format': {'type': 'json_object'},
                     },
                     headers={'Authorization': f'Bearer {groq_key}'},
                 )
@@ -413,9 +410,15 @@ class RealDeepfakeAnalyzer:
                 logger.warning(f'[Groq vision] HTTP {resp.status_code}: {resp.text[:120]}')
                 return None
 
-            content = resp.json()['choices'][0]['message']['content']
-            data = _json.loads(content)
-            fake_prob = float(data.get('fake_probability', 0.5))
+            content = resp.json()['choices'][0]['message']['content'].strip()
+            # Extract JSON even if wrapped in markdown fences
+            import re as _re
+            json_match = _re.search(r'\{[^{}]*\}', content, _re.DOTALL)
+            if not json_match:
+                logger.warning(f'[Groq vision] no JSON in response: {content[:100]}')
+                return None
+            data = _json.loads(json_match.group())
+            fake_prob = max(0.0, min(1.0, float(data.get('fake_probability', 0.5))))
             real_prob = 1.0 - fake_prob
             logger.info(f'[Groq vision] fake={fake_prob:.3f} signals={data.get("key_signals", [])}')
             return {'fake': fake_prob, 'real': real_prob}
