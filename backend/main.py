@@ -454,21 +454,34 @@ async def get_history(
 
 
 @app.post("/api/image-monitor/bytes", response_model=ImageMonitorResponse)
+@limiter.limit("30/minute")
 async def image_monitor_bytes(
+    request: Request,
     image: UploadFile = File(...),
     image_url: str = Form(default=""),
     session_id: str = Form(default=None),
 ) -> ImageMonitorResponse:
     """Analyse raw image bytes uploaded directly — bypasses backend re-fetch."""
-    image_bytes = await image.read()
+    try:
+        image_bytes = await image.read()
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Failed to read uploaded image: {e}") from e
     if not image_bytes or len(image_bytes) < 100:
-        raise HTTPException(status_code=422, detail="Empty or too-small image upload")
+        raise HTTPException(status_code=422, detail=f"Empty or too-small image upload ({len(image_bytes) if image_bytes else 0} bytes)")
 
-    analysis = await analyzer.analyze(image_bytes, image_url or "uploaded")
+    try:
+        analysis = await analyzer.analyze(image_bytes, image_url or "uploaded")
+    except Exception as e:
+        logger.error(f"[bytes] analyzer.analyze failed: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Analysis error: {type(e).__name__}: {e}") from e
     logger.info(f"[main] Bytes upload ML analysis: {analysis.risk_level} ({analysis.fake_probability:.1%}) - {(image_url or 'upload')[:60]}")
 
     resolved_session_id = (session_id or "default-session").strip() or "default-session"
-    trust_score, deduction = await trust_engine.update_score(resolved_session_id, analysis.fake_probability)
+    try:
+        trust_score, deduction = await trust_engine.update_score(resolved_session_id, analysis.fake_probability)
+    except Exception as e:
+        logger.error(f"[bytes] trust_engine.update_score failed: {e}")
+        trust_score, deduction = 100.0, 0.0
 
     url_for_hash = image_url or f"upload-{hashlib.sha256(image_bytes[:256]).hexdigest()[:16]}"
     asyncio.create_task(
