@@ -365,55 +365,64 @@ class RealDeepfakeAnalyzer:
 
     async def _hf_api_infer(self, image_bytes: bytes) -> dict | None:
         """
-        Call HuggingFace Inference API for deepfake detection when local torch is unavailable.
-        Tries multiple models in order; returns {label: score} dict or None on failure.
+        Use Groq's Llama 4 Scout vision model for AI-image detection.
+        Returns {label: score} dict compatible with _build_result, or None on failure.
+        The HF Inference API models (dima806 etc.) were removed from free tier in 2025.
         """
-        hf_key = os.environ.get('HF_API_KEY', '')
-        if not hf_key:
-            return None
-
+        import base64
+        import json as _json
         import httpx
 
-        models = [
-            'dima806/deepfake_vs_real_image_detection',
-            'haywoodsloan/ai-image-detector-deploy',
-            'umm-maybe/AI-image-detector',
-        ]
+        groq_key = os.environ.get('GROQ_API_KEY', '')
+        if not groq_key:
+            return None
 
-        for model in models:
-            url = f'https://api-inference.huggingface.co/models/{model}'
-            # Retry up to 3 times to handle model cold-start (HF free tier loads models on demand)
-            for retry in range(3):
-                try:
-                    async with httpx.AsyncClient(timeout=45.0) as client:
-                        resp = await client.post(
-                            url,
-                            content=image_bytes,
-                            headers={
-                                'Authorization': f'Bearer {hf_key}',
-                                'Content-Type': 'application/octet-stream',
-                                'x-wait-for-model': 'true',
-                            },
-                        )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        if isinstance(data, list) and data:
-                            result = {r['label'].lower(): r['score'] for r in data}
-                            logger.info(f'[HF API] {model} → {result}')
-                            return result
-                        break  # unexpected format — try next model
-                    elif resp.status_code == 503:
-                        wait = 8 * (retry + 1)
-                        logger.info(f'[HF API] {model} loading (retry {retry+1}/3), waiting {wait}s...')
-                        await asyncio.sleep(wait)
-                    else:
-                        logger.warning(f'[HF API] {model} returned {resp.status_code}: {resp.text[:100]}')
-                        break  # non-recoverable — try next model
-                except Exception as e:
-                    logger.warning(f'[HF API] {model} error: {e}')
-                    break
+        img_b64 = base64.b64encode(image_bytes).decode()
 
-        return None
+        prompt = (
+            "Analyze this image for signs of AI generation, deepfake manipulation, or "
+            "synthetic content. Consider: unnatural textures, lighting inconsistencies, "
+            "GAN/diffusion artifacts, blurry boundaries, EXIF anomalies, overly smooth skin, "
+            "unnatural bokeh, or watermarks from AI tools.\n\n"
+            "Return ONLY valid JSON, no explanation:\n"
+            '{"fake_probability": <float 0-1>, "is_ai_generated": <bool>, '
+            '"confidence": <float 0-1>, "key_signals": [<string>, ...]}'
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    'https://api.groq.com/openai/v1/chat/completions',
+                    json={
+                        'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                        'messages': [{
+                            'role': 'user',
+                            'content': [
+                                {'type': 'text', 'text': prompt},
+                                {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}},
+                            ],
+                        }],
+                        'max_tokens': 150,
+                        'temperature': 0.0,
+                        'response_format': {'type': 'json_object'},
+                    },
+                    headers={'Authorization': f'Bearer {groq_key}'},
+                )
+
+            if resp.status_code != 200:
+                logger.warning(f'[Groq vision] HTTP {resp.status_code}: {resp.text[:120]}')
+                return None
+
+            content = resp.json()['choices'][0]['message']['content']
+            data = _json.loads(content)
+            fake_prob = float(data.get('fake_probability', 0.5))
+            real_prob = 1.0 - fake_prob
+            logger.info(f'[Groq vision] fake={fake_prob:.3f} signals={data.get("key_signals", [])}')
+            return {'fake': fake_prob, 'real': real_prob}
+
+        except Exception as e:
+            logger.warning(f'[Groq vision] error: {e}')
+            return None
 
     async def _ensure_models_loaded(self) -> bool:
         """Lazy-load models on first use."""
@@ -811,10 +820,10 @@ class RealDeepfakeAnalyzer:
                     c2pa_findings=c2pa_findings, exif_findings=exif_findings,
                     face_result=None, face_detected=False,
                 )
-            # Try HuggingFace Inference API (free cloud GPU — no torch needed)
+            # Try Groq vision (Llama 4 Scout) for real AI-image detection
             hf_result = await self._hf_api_infer(image_bytes)
             if hf_result is not None:
-                logger.info('[HF API] Using cloud inference result for image analysis')
+                logger.info('[Groq vision] Using LLM vision result for image analysis')
                 return self._build_result(
                     hf_result, None, None, None, None,
                     image_url, 1.0, 0, 0, None,
