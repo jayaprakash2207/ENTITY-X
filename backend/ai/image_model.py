@@ -824,14 +824,28 @@ class RealDeepfakeAnalyzer:
                     face_result=None, face_detected=False,
                 )
             # Try Groq vision (Llama 4 Scout) for real AI-image detection
-            hf_result = await self._hf_api_infer(image_bytes)
-            if hf_result is not None:
-                logger.info('[Groq vision] Using LLM vision result for image analysis')
-                return self._build_result(
-                    hf_result, None, None, None, None,
-                    image_url, 1.0, 0, 0, None,
-                    c2pa_findings=c2pa_findings, exif_findings=exif_findings,
-                    face_result=None, face_detected=False,
+            groq_result = await self._hf_api_infer(image_bytes)
+            if groq_result is not None:
+                fake_prob = groq_result.get('fake', 0.5)
+                if fake_prob >= 0.75:
+                    risk_level = "HIGH"
+                elif fake_prob >= 0.40:
+                    risk_level = "MEDIUM"
+                else:
+                    risk_level = "LOW"
+                logger.info(f'[Groq vision] fake={fake_prob:.3f} risk={risk_level}')
+                c2pa_notes = (c2pa_findings or {}).get('notes', [])
+                exif_notes = [(f"EXIF: {n}" if not n.startswith("EXIF") else n) for n in (exif_findings or {}).get('notes', [])]
+                return AnalysisResult(
+                    fake_probability=round(fake_prob, 4),
+                    risk_level=risk_level,
+                    forensic_explanation=[
+                        f"[Groq Llama 4 Scout Vision] AI-image analysis — fake probability: {fake_prob:.1%}.",
+                        "Groq multimodal LLM inspected pixels for GAN/diffusion artifacts, texture consistency, lighting, and AI tool signatures.",
+                        f"Overall signal strength: {fake_prob:.2f} ({risk_level} risk).",
+                        *c2pa_notes,
+                        *exif_notes,
+                    ] or [f"[Groq vision] {risk_level} risk — fake probability {fake_prob:.1%}."],
                 )
             logger.warning("ML models and HF API unavailable, falling back to heuristic analysis")
             return await self._fallback.analyze(image_bytes, image_url)
