@@ -447,93 +447,73 @@ class RealDeepfakeAnalyzer:
         return None
 
     async def _ensure_models_loaded(self) -> bool:
-        """Lazy-load models on first use."""
+        """Lazy-load models on first use. All pipeline() calls run in thread
+        executors so the asyncio event loop is never blocked."""
         if self._models_loaded:
             return self._ufd_model is not None or self._vit_pipeline is not None
-            
+
         self._models_loaded = True
-        
+        loop = asyncio.get_running_loop()
+
+        def _load(model_id, device_id):
+            from transformers import pipeline as _pipeline
+            return _pipeline("image-classification", model=model_id, device=device_id)
+
         try:
             import torch
-            from transformers import pipeline
-            from PIL import Image
-            
-            # Determine device
+
             if torch.cuda.is_available():
                 self._device = "cuda"
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 self._device = "mps"
             else:
                 self._device = "cpu"
-            
-            logger.info(f"Loading AI image detection models on device: {self._device}")
+
+            logger.info(f"[image_model] Loading deepfake models on {self._device} ...")
             device_id = 0 if self._device == "cuda" else -1
 
-            # ── TIER 1: ViT 99.3% (already cached by video_model) ───────────
+            # ── TIER 1: ViT 99.3% ───────────────────────────────────────────
             try:
-                self._vit_pipeline = pipeline(
-                    "image-classification",
-                    model=VIT_MODEL,
-                    device=device_id,
-                )
-                logger.info(f"ViT model loaded: {VIT_MODEL}")
+                self._vit_pipeline = await loop.run_in_executor(None, _load, VIT_MODEL, device_id)
+                logger.info(f"[image_model] ViT loaded: {VIT_MODEL}")
             except Exception as e:
-                logger.warning(f"ViT model failed: {e}")
+                logger.warning(f"[image_model] ViT failed: {e}")
 
-            # ── TIER 2: SwinV2 98.1% (already cached by video_model) ────────
+            # ── TIER 2: SwinV2 98.1% ────────────────────────────────────────
             try:
-                self._swin_pipeline = pipeline(
-                    "image-classification",
-                    model=SWIN_MODEL,
-                    device=device_id,
-                )
-                logger.info(f"SwinV2 model loaded: {SWIN_MODEL}")
+                self._swin_pipeline = await loop.run_in_executor(None, _load, SWIN_MODEL, device_id)
+                logger.info(f"[image_model] SwinV2 loaded: {SWIN_MODEL}")
             except Exception as e:
-                logger.warning(f"SwinV2 model failed: {e}")
+                logger.warning(f"[image_model] SwinV2 failed: {e}")
 
-            # ── TIER 3: UniversalFakeDetect — load with float16 to halve RAM ─
-            skip_ufd = os.environ.get("SKIP_UFD", "").lower() in ("1", "true", "yes")
+            # ── TIER 3: UniversalFakeDetect (optional, large download) ───────
+            skip_ufd = os.environ.get("SKIP_UFD", "1").lower() in ("1", "true", "yes")
             if not skip_ufd:
                 try:
-                    self._load_universal_fake_detect(torch)
-                    logger.info("UniversalFakeDetect loaded (CVPR 2023 research model)")
+                    await loop.run_in_executor(None, self._load_universal_fake_detect, torch)
+                    logger.info("[image_model] UniversalFakeDetect loaded")
                 except Exception as e:
-                    logger.warning(f"UniversalFakeDetect failed (non-critical): {e}")
+                    logger.warning(f"[image_model] UFD failed (non-critical): {e}")
 
             # ── TIER 4: supplementary CLIP + SDXL ───────────────────────────
-            try:
-                self._clip_pipeline = pipeline(
-                    "image-classification",
-                    model="umm-maybe/AI-image-detector",
-                    device=device_id,
-                )
-                logger.info("CLIP supplementary model loaded")
-            except Exception as e:
-                logger.warning(f"CLIP supplementary model failed: {e}")
+            for mid, attr in (("umm-maybe/AI-image-detector", "_clip_pipeline"),
+                              ("Organika/sdxl-detector",       "_sdxl_pipeline")):
+                try:
+                    setattr(self, attr, await loop.run_in_executor(None, _load, mid, device_id))
+                    logger.info(f"[image_model] Supplementary loaded: {mid}")
+                except Exception as e:
+                    logger.warning(f"[image_model] Supplementary {mid} failed (non-critical): {e}")
 
-            try:
-                self._sdxl_pipeline = pipeline(
-                    "image-classification",
-                    model="Organika/sdxl-detector",
-                    device=device_id,
-                )
-                logger.info("SDXL supplementary model loaded")
-            except Exception as e:
-                logger.warning(f"SDXL supplementary model failed (non-critical): {e}")
-
-            # ── TIER 5: face-specialized deepfake model (disabled) ───────────
             self._face_pipeline = None
+            ok = self._vit_pipeline is not None or self._swin_pipeline is not None or self._ufd_model is not None
+            logger.info(f"[image_model] Model load complete — ViT={'✓' if self._vit_pipeline else '✗'}  SwinV2={'✓' if self._swin_pipeline else '✗'}")
+            return ok
 
-            return (self._vit_pipeline is not None
-                    or self._swin_pipeline is not None
-                    or self._ufd_model is not None)
-            
         except ImportError as e:
-            logger.error(f"ML dependencies not installed: {e}")
-            logger.error("Run: pip install torch torchvision transformers Pillow timm open_clip_torch")
+            logger.error(f"[image_model] ML deps missing: {e}  — run: pip install torch transformers timm")
             return False
         except Exception as e:
-            logger.error(f"Failed to initialize ML models: {e}")
+            logger.error(f"[image_model] Model init error: {e}", exc_info=True)
             return False
     
     def _load_universal_fake_detect(self, torch):
@@ -799,163 +779,145 @@ class RealDeepfakeAnalyzer:
     async def analyze(
         self, image_bytes: bytes | None, image_url: str
     ) -> AnalysisResult:
-        """
-        Analyse image bytes using real ML models.
-        
-        Args:
-            image_bytes: Raw image bytes, or None if fetch failed.
-            image_url: Source URL for logging/context.
-            
-        Returns:
-            AnalysisResult with fake_probability, risk_level, and
-            forensic_explanation based on actual ML inference.
-        """
         if not image_bytes:
-            logger.warning(f"[RealDeepfakeAnalyzer] No bytes for {image_url[:60]} — delegating to heuristic fallback")
+            logger.warning(f"[image_model] No bytes for {image_url[:60]} — heuristic fallback")
             return await self._fallback.analyze(None, image_url)
 
-        # ── Fast metadata checks BEFORE loading ML models ────────────────
-        # These are instant (byte scan / EXIF parse) and can confirm AI origin
-        # definitively without any ML inference needed.
+        # ── Instant metadata checks ───────────────────────────────────────────
         c2pa_findings = self._check_c2pa_watermark(image_bytes)
         exif_findings = self._check_exif_metadata(image_bytes)
-
         definitive_ai = (
             c2pa_findings.get("ai_tool") is not None
             or exif_findings.get("ai_software_detected")
         )
-        if definitive_ai:
-            logger.info(
-                f"[metadata] Definitive AI origin detected — skipping ML pipeline. "
-                f"c2pa={c2pa_findings.get('ai_tool')}, exif={exif_findings.get('ai_software_detected')}"
-            )
 
-        # Try to load ML models
-        models_available = await self._ensure_models_loaded()
-        
-        if not models_available:
-            if definitive_ai:
-                # Metadata alone is conclusive — build result without ML
-                return self._build_result(
-                    None, None, None, None, None,
-                    image_url, 1.0, 0, 0, None,
-                    c2pa_findings=c2pa_findings, exif_findings=exif_findings,
-                    face_result=None, face_detected=False,
-                )
-            # Try Groq vision (Llama 4 Scout) for real AI-image detection
-            vision_result = await self._hf_api_infer(image_bytes)
-            if vision_result is not None:
-                fake_prob = vision_result.get('fake', 0.5)
-                source = vision_result.get('_source', 'vision')
-                signals = vision_result.get('signals', [])
-                if fake_prob >= 0.75:
-                    risk_level = "HIGH"
-                elif fake_prob >= 0.40:
-                    risk_level = "MEDIUM"
+        # ── Cloud vision + local model loading in PARALLEL ────────────────────
+        # Gemini/Groq responds in ~2 s; model loading can take 30 s+ on first run.
+        # Running both in parallel ensures a fast response regardless.
+        vision_result, models_available = await asyncio.gather(
+            self._hf_api_infer(image_bytes),
+            self._ensure_models_loaded(),
+            return_exceptions=True,
+        )
+        if isinstance(vision_result, Exception):
+            logger.warning(f"[vision] {vision_result}")
+            vision_result = None
+        if isinstance(models_available, Exception):
+            logger.warning(f"[models] {models_available}")
+            models_available = False
+
+        logger.info(
+            f"[image_model] vision={'✓' if vision_result else '✗'}  "
+            f"torch={'✓' if models_available else '✗'}  "
+            f"definitive_ai={definitive_ai}"
+        )
+
+        # ── Torch inference (if models loaded) ───────────────────────────────
+        torch_kwargs: dict | None = None
+        if models_available:
+            try:
+                from PIL import Image as _PIL
+                image = _PIL.open(io.BytesIO(image_bytes)).convert("RGB")
+                width, height = image.size
+
+                if width < self.MIN_DIMENSION or height < self.MIN_DIMENSION:
+                    logger.warning(f"[image_model] Image too small ({width}x{height}) — skipping torch")
                 else:
-                    risk_level = "LOW"
-                source_label = "Gemini 2.0 Flash Vision" if source == 'gemini' else "Groq Llama 4 Scout Vision"
-                c2pa_notes = (c2pa_findings or {}).get('notes', [])
-                exif_notes = [(f"EXIF: {n}" if not n.startswith("EXIF") else n) for n in (exif_findings or {}).get('notes', [])]
-                return AnalysisResult(
-                    fake_probability=round(fake_prob, 4),
-                    risk_level=risk_level,
-                    forensic_explanation=[
-                        f"[{source_label}] Pixel-level AI forensics — fake probability: {fake_prob:.1%}.",
-                        f"Vision model inspected pixels for GAN/diffusion artifacts, texture, lighting, and AI tool signatures.",
-                        *([f"Signal: {s}" for s in signals[:4]] if signals else [f"Overall signal strength: {fake_prob:.2f} ({risk_level} risk)."]),
-                        *c2pa_notes,
-                        *exif_notes,
-                    ],
+                    image = self._preprocess_image(image)
+                    loop = asyncio.get_running_loop()
+                    crops = self._get_analysis_crops(image)
+                    quality_factor = self._compute_quality_factor(width, height)
+
+                    vit_result = swin_result = ufd_result = clip_result = sdxl_result = None
+
+                    if self._vit_pipeline:
+                        vit_crops = [await loop.run_in_executor(None, self._run_pipeline_inference, self._vit_pipeline, c) for c in crops]
+                        vit_result = self._aggregate_crop_results(vit_crops)
+
+                    if self._swin_pipeline:
+                        swin_crops = [await loop.run_in_executor(None, self._run_pipeline_inference, self._swin_pipeline, c) for c in crops]
+                        swin_result = self._aggregate_crop_results(swin_crops)
+
+                    if self._ufd_model is not None:
+                        ufd_result = await loop.run_in_executor(None, self._run_ufd_inference, image)
+
+                    if self._clip_pipeline:
+                        clip_result = await loop.run_in_executor(None, self._run_pipeline_inference, self._clip_pipeline, image)
+
+                    if self._sdxl_pipeline:
+                        sdxl_result = await loop.run_in_executor(None, self._run_pipeline_inference, self._sdxl_pipeline, image)
+
+                    auxiliary_scores = {
+                        "frequency": self._analyze_frequency_domain(image),
+                        "texture":   self._analyze_texture(image),
+                        "symmetry":  self._detect_symmetric_artifacts(image),
+                    }
+
+                    face_result   = None
+                    face_detected = False
+                    face_region   = self._detect_face_region(image)
+                    if face_region is not None:
+                        face_detected = True
+                        pipe = self._face_pipeline or self._vit_pipeline
+                        if pipe:
+                            face_result = await loop.run_in_executor(None, self._run_pipeline_inference, pipe, face_region)
+
+                    torch_kwargs = dict(
+                        vit_result=vit_result, swin_result=swin_result,
+                        ufd_result=ufd_result, clip_result=clip_result,
+                        sdxl_result=sdxl_result, image_url=image_url,
+                        quality_factor=quality_factor, width=width, height=height,
+                        auxiliary_scores=auxiliary_scores,
+                        c2pa_findings=c2pa_findings, exif_findings=exif_findings,
+                        face_result=face_result, face_detected=face_detected,
+                    )
+            except Exception as e:
+                logger.error(f"[torch] Inference error: {e}", exc_info=True)
+
+        # ── Build final result ────────────────────────────────────────────────
+        if torch_kwargs:
+            result = self._build_result(**torch_kwargs)
+            if vision_result:
+                src = vision_result.get('_source', 'vision')
+                lbl = "Gemini 2.0 Flash" if src == 'gemini' else "Groq Llama 4 Scout"
+                result.forensic_explanation.insert(
+                    0, f"[{lbl} + Local ML Ensemble] Vision AI + ViT/SwinV2 deepfake analysis."
                 )
-            logger.warning("ML models and HF API unavailable, falling back to heuristic analysis")
-            return await self._fallback.analyze(image_bytes, image_url)
-        
-        try:
-            from PIL import Image
-            
-            # Load image from bytes
-            image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-            
-            # Check image quality
-            width, height = image.size
-            quality_factor = self._compute_quality_factor(width, height)
-            
-            # Skip very small images (unreliable for ML analysis)
-            if width < self.MIN_DIMENSION or height < self.MIN_DIMENSION:
-                logger.warning(f"Image too small ({width}x{height}), using heuristic fallback")
-                return await self._fallback.analyze(image_bytes, image_url)
-            
-            # Preprocess: resize large images while maintaining aspect ratio
-            image = self._preprocess_image(image)
-            
-            # Run inference in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            
-            crops = self._get_analysis_crops(image)
+            return result
 
-            # ── Tier 1: ViT 99.3% (multi-crop) ─────────────────────────────
-            vit_result = None
-            if self._vit_pipeline:
-                vit_crops = [await loop.run_in_executor(None, self._run_pipeline_inference, self._vit_pipeline, c) for c in crops]
-                vit_result = self._aggregate_crop_results(vit_crops)
-
-            # ── Tier 2: SwinV2 98.1% (multi-crop) ───────────────────────────
-            swin_result = None
-            if self._swin_pipeline:
-                swin_crops = [await loop.run_in_executor(None, self._run_pipeline_inference, self._swin_pipeline, c) for c in crops]
-                swin_result = self._aggregate_crop_results(swin_crops)
-
-            # ── Tier 3: UniversalFakeDetect ──────────────────────────────────
-            ufd_result = None
-            if self._ufd_model is not None:
-                ufd_result = await loop.run_in_executor(None, self._run_ufd_inference, image)
-
-            # ── Tier 4: supplementary CLIP + SDXL (single pass for speed) ───
-            clip_result = None
-            if self._clip_pipeline:
-                clip_result = await loop.run_in_executor(None, self._run_pipeline_inference, self._clip_pipeline, image)
-
-            sdxl_result = None
-            if self._sdxl_pipeline:
-                sdxl_result = await loop.run_in_executor(None, self._run_pipeline_inference, self._sdxl_pipeline, image)
-
-            # ── Auxiliary analysis ───────────────────────────────────────────
-            auxiliary_scores = {
-                "frequency": self._analyze_frequency_domain(image),
-                "texture":   self._analyze_texture(image),
-                "symmetry":  self._detect_symmetric_artifacts(image),
-            }
-
-            # ── Tier 5: face-specialized deepfake model ──────────────────────
-            # Detect if image contains a face, then run a dedicated face
-            # deepfake model on the cropped face region.  Falls back to ViT
-            # on the face crop when the dedicated model is unavailable.
-            face_result   = None
-            face_detected = False
-            face_region   = self._detect_face_region(image)
-            if face_region is not None:
-                face_detected = True
-                if self._face_pipeline:
-                    face_result = await loop.run_in_executor(
-                        None, self._run_pipeline_inference, self._face_pipeline, face_region
-                    )
-                elif self._vit_pipeline:
-                    # Fallback: run ViT on the face crop for face-focused pass
-                    face_result = await loop.run_in_executor(
-                        None, self._run_pipeline_inference, self._vit_pipeline, face_region
-                    )
-
-            return self._build_result(
-                vit_result, swin_result, ufd_result, clip_result, sdxl_result,
-                image_url, quality_factor, width, height, auxiliary_scores,
-                c2pa_findings=c2pa_findings, exif_findings=exif_findings,
-                face_result=face_result, face_detected=face_detected,
+        if vision_result:
+            fake_prob = vision_result.get('fake', 0.5)
+            src    = vision_result.get('_source', 'vision')
+            sigs   = vision_result.get('signals', [])
+            risk   = "HIGH" if fake_prob >= 0.75 else ("MEDIUM" if fake_prob >= 0.40 else "LOW")
+            label  = "Gemini 2.0 Flash Vision" if src == 'gemini' else "Groq Llama 4 Scout Vision"
+            c2pa_notes = (c2pa_findings or {}).get('notes', [])
+            exif_notes = [
+                (f"EXIF: {n}" if not n.startswith("EXIF") else n)
+                for n in (exif_findings or {}).get('notes', [])
+            ]
+            return AnalysisResult(
+                fake_probability=round(fake_prob, 4),
+                risk_level=risk,
+                forensic_explanation=[
+                    f"[{label}] Pixel-level AI forensics — fake probability: {fake_prob:.1%}.",
+                    "Vision model inspected pixels for GAN/diffusion artifacts, texture, lighting, and AI tool signatures.",
+                    *([f"Signal: {s}" for s in sigs[:4]] if sigs else [f"Signal strength: {fake_prob:.2f} ({risk} risk)."]),
+                    *c2pa_notes,
+                    *exif_notes,
+                ],
             )
 
-        except Exception as e:
-            logger.error(f"ML inference failed: {e}, falling back to heuristic")
-            return await self._fallback.analyze(image_bytes, image_url)
+        if definitive_ai:
+            return self._build_result(
+                None, None, None, None, None,
+                image_url, 1.0, 0, 0, None,
+                c2pa_findings=c2pa_findings, exif_findings=exif_findings,
+                face_result=None, face_detected=False,
+            )
+
+        logger.warning("[image_model] All analysis paths failed — heuristic fallback")
+        return await self._fallback.analyze(image_bytes, image_url)
     
     def _run_pipeline_inference(self, pipe, image) -> dict:
         """Run any image-classification pipeline and return {label: score} dict."""
@@ -1128,10 +1090,11 @@ class RealDeepfakeAnalyzer:
             _add(ufd_result.get("fake"), 0.20, "UFD")
 
         # --- supplementary ---
-        _add(self._extract_fake(clip_result), 0.10, "CLIP")
+        _add(self._extract_fake(clip_result), 0.08, "CLIP")
         sdxl_fake = self._extract_fake(sdxl_result)
-        sdxl_w = 0.30 if (sdxl_fake or 0) > 0.90 else 0.05
-        _add(sdxl_fake, sdxl_w, "SDXL")
+        # SDXL detector is supplementary — cap weight at 0.07 even when confident.
+        # Primary ViT+SwinV2 have 10x higher accuracy; we don't let SDXL dominate.
+        _add(sdxl_fake, 0.07, "SDXL")
 
         # --- face-specialized tier (only counted when face is detected) ---
         face_fake = self._extract_fake(face_result) if face_detected else None
@@ -1149,13 +1112,16 @@ class RealDeepfakeAnalyzer:
             fake_probability = weighted_avg
 
             # ── Whistleblower rule ───────────────────────────────────────────
-            # If ANY single model is >= 85% confident of AI generation, the
-            # final score must be at least that model's signal (capped at 0.75
-            # to stay honest if the other models strongly disagree).
-            # This prevents low-scoring models from silencing a strong detector.
+            # Only fires when primary ViT+SwinV2 agree it's suspicious (>0.4)
+            # OR when there's no primary tier data.  Never overrides a strong
+            # tier-1 "real" verdict from the specialized deepfake models.
             max_single = max(m["prob"] for m in models)
-            if max_single >= 0.85:
-                floor = max_single * 0.70   # e.g. SDXL=99% → floor=69%
+            tier1_says_real = (
+                vit_fake is not None and swin_fake is not None
+                and (vit_fake + swin_fake) / 2 <= 0.35
+            )
+            if max_single >= 0.85 and not tier1_says_real:
+                floor = max_single * 0.65
                 fake_probability = max(fake_probability, floor)
                 model_names.append(f"(whistleblower-{max_single:.0%})")
 

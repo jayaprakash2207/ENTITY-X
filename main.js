@@ -25,18 +25,20 @@ const db = new Proxy({}, {
 //   ENTITY_X_CLOUD_URL=https://… → uses that URL instead
 const CLOUD_BASE = process.env.ENTITY_X_CLOUD_URL ?? 'https://entity-x.onrender.com';
 const LOCAL_BASE  = 'http://127.0.0.1:8000';
-const API_BASE    = CLOUD_BASE || LOCAL_BASE;
+// Mutable — auto-detect below switches to LOCAL_BASE when local Python backend is running
+let API_BASE = CLOUD_BASE || LOCAL_BASE;
 
-const IMAGE_MONITOR_API_URL =
+// Mutable URL constants — recomputed after local-backend auto-detect (see app.whenReady)
+let IMAGE_MONITOR_API_URL =
   process.env.IMAGE_MONITOR_API_URL || `${API_BASE}/api/image-monitor`;
 
-const TEXT_MONITOR_API_URL =
+let TEXT_MONITOR_API_URL =
   process.env.TEXT_MONITOR_API_URL || `${API_BASE}/api/text-monitor`;
 
-const NEWS_SCANNER_API_URL =
+let NEWS_SCANNER_API_URL =
   process.env.NEWS_SCANNER_API_URL || `${API_BASE}/api/news-scanner`;
 
-const LEGAL_CHAT_API_URL =
+let LEGAL_CHAT_API_URL =
   process.env.LEGAL_CHAT_API_URL || `${API_BASE}/api/legal/chat`;
 
 const IMAGE_MONITOR_SESSION_ID = crypto.randomUUID();
@@ -2054,7 +2056,28 @@ function evaluateAlertRules(detection, entityType) {
   } catch (e) { console.error('[RULES]', e.message); }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // ── Auto-detect local Python backend ───────────────────────────────────────
+  // If the local backend is running (npm run backend), prefer it over cloud so
+  // real torch ML models (ViT, SwinV2) are used instead of Gemini/Groq.
+  try {
+    const localCheck = await fetch(`${LOCAL_BASE}/api/health`, {
+      signal: AbortSignal.timeout(800),
+    });
+    if (localCheck.ok) {
+      API_BASE = LOCAL_BASE;
+      if (!process.env.IMAGE_MONITOR_API_URL) IMAGE_MONITOR_API_URL = `${LOCAL_BASE}/api/image-monitor`;
+      if (!process.env.TEXT_MONITOR_API_URL)  TEXT_MONITOR_API_URL  = `${LOCAL_BASE}/api/text-monitor`;
+      if (!process.env.NEWS_SCANNER_API_URL)  NEWS_SCANNER_API_URL  = `${LOCAL_BASE}/api/news-scanner`;
+      if (!process.env.LEGAL_CHAT_API_URL)    LEGAL_CHAT_API_URL    = `${LOCAL_BASE}/api/legal/chat`;
+      console.log('[BACKEND] Local backend detected — using 127.0.0.1:8000 (real ML models)');
+    } else {
+      console.log(`[BACKEND] Local backend not ready — using cloud: ${API_BASE}`);
+    }
+  } catch {
+    console.log(`[BACKEND] No local backend — using cloud: ${API_BASE}`);
+  }
+
   // Initialise local SQLite database (userData dir, persists across restarts)
   db.initDb(path.join(app.getPath('userData'), 'entityx.db'));
 
