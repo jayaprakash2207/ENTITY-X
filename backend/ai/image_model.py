@@ -410,7 +410,7 @@ class RealDeepfakeAnalyzer:
     async def _ensure_models_loaded(self) -> bool:
         """Lazy-load models on first use."""
         if self._models_loaded:
-            return self._ufd_model is not None or self._primary_pipeline is not None
+            return self._ufd_model is not None or self._vit_pipeline is not None
             
         self._models_loaded = True
         
