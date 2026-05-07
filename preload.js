@@ -123,7 +123,7 @@ contextBridge.exposeInMainWorld('entityView', {
 });
 
 contextBridge.exposeInMainWorld('entityX', {
-  analyzeUrl:    (url)             => ipcRenderer.invoke('analyze:manual-url',  url),
+  analyzeUrl:    (url, imageBase64) => ipcRenderer.invoke('analyze:manual-url',  url, imageBase64),
   analyzeText:   ({ text, title }) => ipcRenderer.invoke('analyze:manual-text', { text, title }),
   scanVideo:          (url)  => ipcRenderer.invoke('analyze:manual-video', url),
   scanAudio:          (url)  => ipcRenderer.invoke('analyze:manual-audio', url),

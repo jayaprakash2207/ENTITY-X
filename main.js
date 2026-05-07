@@ -2725,7 +2725,7 @@ app.whenReady().then(() => {
   // evaluateAlertRules and _matchCondition are defined at module level (see below app.whenReady)
 
   /* Manual URL analysis: image or article */
-  ipcMain.handle('analyze:manual-url', async (event, url) => {
+  ipcMain.handle('analyze:manual-url', async (event, url, imageBase64) => {
     if (!isValidHttpUrl(url)) return { success: false, error: 'Invalid URL' };
     // Tier 1: extension in URL path
     let isImage = /\.(jpg|jpeg|png|gif|webp|bmp|avif|tiff?|svg)([\?&#:]|$)/i.test(url);
@@ -2756,10 +2756,22 @@ app.whenReady().then(() => {
 
     try {
       if (isImage) {
-        const res = await net.fetch(IMAGE_MONITOR_API_URL, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_url: url, session_id: IMAGE_MONITOR_SESSION_ID })
-        });
+        let res;
+        if (imageBase64) {
+          // Bytes captured from webview — bypass CDN restrictions entirely
+          const imageBuffer = Buffer.from(imageBase64, 'base64');
+          const formData = new FormData();
+          const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
+          formData.append('image', blob, 'image.jpg');
+          formData.append('image_url', url);
+          formData.append('session_id', IMAGE_MONITOR_SESSION_ID);
+          res = await net.fetch(`${IMAGE_MONITOR_API_URL}/bytes`, { method: 'POST', body: formData });
+        } else {
+          res = await net.fetch(IMAGE_MONITOR_API_URL, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_url: url, session_id: IMAGE_MONITOR_SESSION_ID })
+          });
+        }
         if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
         const analysis = await res.json();
         const entityId = crypto.createHash('sha256').update(`image-${url}`).digest('hex').substring(0, 16);

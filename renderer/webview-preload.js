@@ -576,6 +576,26 @@ function installContextScanHandlers() {
   window.__contextScanInstalled = true;
 
   /* ── contextmenu handler ── */
+  async function captureImageBase64(url) {
+    try {
+      const resp = await Promise.race([
+        fetch(url, { mode: 'cors', credentials: 'omit' }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+      ]);
+      if (!resp.ok) return null;
+      const buffer = await resp.arrayBuffer();
+      const arr = new Uint8Array(buffer);
+      let binary = '';
+      const CHUNK = 8192;
+      for (let i = 0; i < arr.length; i += CHUNK) {
+        binary += String.fromCharCode(...arr.slice(i, i + CHUNK));
+      }
+      return btoa(binary);
+    } catch (_) {
+      return null;
+    }
+  }
+
   document.addEventListener('contextmenu', (e) => {
     const target = e.target;
     let payload = null;
@@ -583,7 +603,11 @@ function installContextScanHandlers() {
     if (target instanceof HTMLImageElement) {
       const url = target.currentSrc || target.src;
       if (url && url.startsWith('http')) {
-        payload = { type: 'image', url };
+        e.preventDefault();
+        captureImageBase64(url).then(imageBase64 => {
+          ipcRenderer.send('webview:context-scan-request', { type: 'image', url, imageBase64 });
+        });
+        return;
       }
     } else if (target instanceof HTMLVideoElement) {
       // currentSrc is often blob: on YouTube/streaming sites
@@ -658,7 +682,9 @@ function installContextScanHandlers() {
     if (target instanceof HTMLImageElement) {
       const url = target.currentSrc || target.src;
       if (url && url.startsWith('http')) {
-        ipcRenderer.send('webview:context-scan-request', { type: 'image', url, immediate: true });
+        captureImageBase64(url).then(imageBase64 => {
+          ipcRenderer.send('webview:context-scan-request', { type: 'image', url, imageBase64, immediate: true });
+        });
       }
     }
   }, true);

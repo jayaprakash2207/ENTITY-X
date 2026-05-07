@@ -201,7 +201,7 @@ export default function ScanPopup({ payload, onClose, onNavigate }) {
 
     try {
       let res
-      if      (payload.type === 'image') res = await window.entityX.analyzeUrl(payload.url)
+      if      (payload.type === 'image') res = await window.entityX.analyzeUrl(payload.url, payload.imageBase64 || null)
       else if (payload.type === 'video') res = await window.entityX.scanVideoWithAudio(payload.url)
       else if (payload.type === 'audio') res = await window.entityX.scanAudio(payload.url)
       else if (payload.type === 'text')  res = await window.entityX.analyzeText({ text: payload.text, title: payload.title || 'Selected Text' })
