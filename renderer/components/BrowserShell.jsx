@@ -888,7 +888,7 @@ export default function BrowserShell({
         </span>
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 7, fontFamily: 'monospace', color: '#334155', letterSpacing: '0.12em' }}>
-          {loading ? 'LOADING…' : 'READY'} · ENTITY-X MONITOR v1.4.2
+          {loading ? 'LOADING…' : 'READY'} · ENTITY-X MONITOR v1.4.4
         </span>
       </div>
 

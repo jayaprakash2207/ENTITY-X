@@ -577,23 +577,41 @@ function installContextScanHandlers() {
 
   /* ── contextmenu handler ── */
   async function captureImageBase64(url) {
+    // Phase 1: try canvas (instant — image already rendered, no network)
+    const img = document.querySelector(`img[src="${CSS.escape(url)}"], img[currentSrc="${CSS.escape(url)}"]`);
+    if (img && img.complete && img.naturalWidth > 0) {
+      try {
+        const w = Math.min(img.naturalWidth, 1024);
+        const h = Math.min(img.naturalHeight, 1024);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+      } catch (_) { /* cross-origin tainted canvas — fall through */ }
+    }
+
+    // Phase 2: try browser fetch (uses cached response if already loaded)
     try {
       const resp = await Promise.race([
         fetch(url, { mode: 'cors', credentials: 'omit' }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000)),
       ]);
-      if (!resp.ok) return null;
-      const buffer = await resp.arrayBuffer();
-      const arr = new Uint8Array(buffer);
-      let binary = '';
-      const CHUNK = 8192;
-      for (let i = 0; i < arr.length; i += CHUNK) {
-        binary += String.fromCharCode(...arr.slice(i, i + CHUNK));
+      if (resp.ok) {
+        const buffer = await resp.arrayBuffer();
+        const arr = new Uint8Array(buffer);
+        let binary = '';
+        const CHUNK = 8192;
+        for (let i = 0; i < arr.length; i += CHUNK) {
+          binary += String.fromCharCode(...arr.slice(i, i + CHUNK));
+        }
+        return btoa(binary);
       }
-      return btoa(binary);
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { /* CORS blocked — fall through */ }
+
+    // Phase 3: ask Electron main process — no CORS, sends correct Referer
+    try {
+      return await ipcRenderer.invoke('fetch-image-bytes', { url, referer: window.location.href });
+    } catch (_) { return null; }
   }
 
   document.addEventListener('contextmenu', (e) => {

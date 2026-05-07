@@ -201,7 +201,7 @@ export default function TabBar({
           fontSize: 10, color: '#1e293b', marginTop: 3,
           fontFamily: 'monospace', letterSpacing: '0.04em',
         }}>
-          v1.4.2
+          v1.4.4
         </div>
       </div>
     </nav>

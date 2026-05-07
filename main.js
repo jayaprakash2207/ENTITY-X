@@ -2724,6 +2724,34 @@ app.whenReady().then(() => {
 
   // evaluateAlertRules and _matchCondition are defined at module level (see below app.whenReady)
 
+  /* Fetch image bytes from main process — bypasses browser CORS and CDN blocks.
+   * Uses Chromium's network stack with correct Referer so CDNs accept the request. */
+  ipcMain.handle('fetch-image-bytes', async (event, { url, referer }) => {
+    if (!isValidHttpUrl(url)) return null;
+    try {
+      const res = await net.fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+          'Accept': 'image/webp,image/avif,image/apng,image/png,image/jpeg,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': referer || url,
+          'Sec-Fetch-Dest': 'image',
+          'Sec-Fetch-Mode': 'no-cors',
+          'Sec-Fetch-Site': 'cross-site',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) return null;
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.startsWith('image/')) return null;
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (buffer.length < 100) return null;
+      return buffer.toString('base64');
+    } catch (_) {
+      return null;
+    }
+  });
+
   /* Manual URL analysis: image or article */
   ipcMain.handle('analyze:manual-url', async (event, url, imageBase64) => {
     if (!isValidHttpUrl(url)) return { success: false, error: 'Invalid URL' };
