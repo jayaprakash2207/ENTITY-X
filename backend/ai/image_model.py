@@ -365,67 +365,86 @@ class RealDeepfakeAnalyzer:
 
     async def _hf_api_infer(self, image_bytes: bytes) -> dict | None:
         """
-        Use Groq's Llama 4 Scout vision model for AI-image detection.
-        Returns {label: score} dict compatible with _build_result, or None on failure.
-        The HF Inference API models (dima806 etc.) were removed from free tier in 2025.
+        Use Gemini 2.0 Flash vision for AI-image detection (primary),
+        falling back to Groq Llama 4 Scout (secondary).
+        Returns {fake: score, real: score} or None on failure.
         """
         import base64
         import json as _json
+        import re as _re
         import httpx
 
-        groq_key = os.environ.get('GROQ_API_KEY', '')
-        if not groq_key:
-            return None
-
         img_b64 = base64.b64encode(image_bytes).decode()
-
         prompt = (
-            "Analyze this image for signs of AI generation, deepfake manipulation, or "
-            "synthetic content. Check: unnatural textures, lighting inconsistencies, "
-            "GAN/diffusion artifacts, blurry boundaries, overly smooth skin, or AI tool watermarks.\n\n"
-            'Reply with ONLY this JSON (no markdown, no explanation):\n'
-            '{"fake_probability":0.0,"is_ai_generated":false,"key_signals":["signal1"]}'
+            "You are a forensic deepfake detector. Analyze this image at the pixel level.\n"
+            "Check for: GAN grid artifacts, diffusion model noise patterns, unnatural skin texture, "
+            "inconsistent lighting/shadows, blurry hair or edges, copy-paste seams, unnaturally "
+            "perfect symmetry, AI tool watermarks, or missing film grain/camera noise.\n\n"
+            "Real photos have natural imperfections. AI images have characteristic patterns.\n\n"
+            "Reply ONLY with this JSON (numbers 0.0-1.0, no explanation):\n"
+            '{"fake_probability": 0.15, "signals": ["reason1", "reason2"]}'
         )
 
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    'https://api.groq.com/openai/v1/chat/completions',
-                    json={
-                        'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
-                        'messages': [{
-                            'role': 'user',
-                            'content': [
+        # ── Primary: Gemini 2.0 Flash ──────────────────────────────────────
+        gemini_key = os.environ.get('GEMINI_API_KEY', '')
+        if gemini_key:
+            for model in ('gemini-2.0-flash', 'gemini-2.0-flash-lite'):
+                try:
+                    url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}'
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        resp = await client.post(url, json={
+                            'contents': [{'parts': [
+                                {'text': prompt},
+                                {'inline_data': {'mime_type': 'image/jpeg', 'data': img_b64}},
+                            ]}],
+                            'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 150},
+                        })
+                    if resp.status_code == 200:
+                        text = resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+                        m = _re.search(r'\{[^{}]*\}', text, _re.DOTALL)
+                        if m:
+                            data = _json.loads(m.group())
+                            fp = max(0.0, min(1.0, float(data.get('fake_probability', 0.5))))
+                            logger.info(f'[Gemini vision] {model} fake={fp:.3f} signals={data.get("signals", [])}')
+                            return {'fake': fp, 'real': 1.0 - fp, 'signals': data.get('signals', []), '_source': 'gemini'}
+                    elif resp.status_code == 429:
+                        logger.info(f'[Gemini vision] rate-limited, trying next model...')
+                    else:
+                        logger.warning(f'[Gemini vision] {resp.status_code}: {resp.text[:80]}')
+                        break
+                except Exception as e:
+                    logger.warning(f'[Gemini vision] {model} error: {e}')
+                    break
+
+        # ── Secondary: Groq Llama 4 Scout ──────────────────────────────────
+        groq_key = os.environ.get('GROQ_API_KEY', '')
+        if groq_key:
+            try:
+                async with httpx.AsyncClient(timeout=25.0) as client:
+                    resp = await client.post(
+                        'https://api.groq.com/openai/v1/chat/completions',
+                        json={
+                            'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                            'messages': [{'role': 'user', 'content': [
                                 {'type': 'text', 'text': prompt},
                                 {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}},
-                            ],
-                        }],
-                        'max_tokens': 120,
-                        'temperature': 0.0,
-                    },
-                    headers={'Authorization': f'Bearer {groq_key}'},
-                )
+                            ]}],
+                            'max_tokens': 120, 'temperature': 0.0,
+                        },
+                        headers={'Authorization': f'Bearer {groq_key}'},
+                    )
+                if resp.status_code == 200:
+                    text = resp.json()['choices'][0]['message']['content'].strip()
+                    m = _re.search(r'\{[^{}]*\}', text, _re.DOTALL)
+                    if m:
+                        data = _json.loads(m.group())
+                        fp = max(0.0, min(1.0, float(data.get('fake_probability', 0.5))))
+                        logger.info(f'[Groq vision] fake={fp:.3f}')
+                        return {'fake': fp, 'real': 1.0 - fp, 'signals': data.get('signals', []), '_source': 'groq'}
+            except Exception as e:
+                logger.warning(f'[Groq vision] error: {e}')
 
-            if resp.status_code != 200:
-                logger.warning(f'[Groq vision] HTTP {resp.status_code}: {resp.text[:120]}')
-                return None
-
-            content = resp.json()['choices'][0]['message']['content'].strip()
-            # Extract JSON even if wrapped in markdown fences
-            import re as _re
-            json_match = _re.search(r'\{[^{}]*\}', content, _re.DOTALL)
-            if not json_match:
-                logger.warning(f'[Groq vision] no JSON in response: {content[:100]}')
-                return None
-            data = _json.loads(json_match.group())
-            fake_prob = max(0.0, min(1.0, float(data.get('fake_probability', 0.5))))
-            real_prob = 1.0 - fake_prob
-            logger.info(f'[Groq vision] fake={fake_prob:.3f} signals={data.get("key_signals", [])}')
-            return {'fake': fake_prob, 'real': real_prob}
-
-        except Exception as e:
-            logger.warning(f'[Groq vision] error: {e}')
-            return None
+        return None
 
     async def _ensure_models_loaded(self) -> bool:
         """Lazy-load models on first use."""
@@ -824,28 +843,30 @@ class RealDeepfakeAnalyzer:
                     face_result=None, face_detected=False,
                 )
             # Try Groq vision (Llama 4 Scout) for real AI-image detection
-            groq_result = await self._hf_api_infer(image_bytes)
-            if groq_result is not None:
-                fake_prob = groq_result.get('fake', 0.5)
+            vision_result = await self._hf_api_infer(image_bytes)
+            if vision_result is not None:
+                fake_prob = vision_result.get('fake', 0.5)
+                source = vision_result.get('_source', 'vision')
+                signals = vision_result.get('signals', [])
                 if fake_prob >= 0.75:
                     risk_level = "HIGH"
                 elif fake_prob >= 0.40:
                     risk_level = "MEDIUM"
                 else:
                     risk_level = "LOW"
-                logger.info(f'[Groq vision] fake={fake_prob:.3f} risk={risk_level}')
+                source_label = "Gemini 2.0 Flash Vision" if source == 'gemini' else "Groq Llama 4 Scout Vision"
                 c2pa_notes = (c2pa_findings or {}).get('notes', [])
                 exif_notes = [(f"EXIF: {n}" if not n.startswith("EXIF") else n) for n in (exif_findings or {}).get('notes', [])]
                 return AnalysisResult(
                     fake_probability=round(fake_prob, 4),
                     risk_level=risk_level,
                     forensic_explanation=[
-                        f"[Groq Llama 4 Scout Vision] AI-image analysis — fake probability: {fake_prob:.1%}.",
-                        "Groq multimodal LLM inspected pixels for GAN/diffusion artifacts, texture consistency, lighting, and AI tool signatures.",
-                        f"Overall signal strength: {fake_prob:.2f} ({risk_level} risk).",
+                        f"[{source_label}] Pixel-level AI forensics — fake probability: {fake_prob:.1%}.",
+                        f"Vision model inspected pixels for GAN/diffusion artifacts, texture, lighting, and AI tool signatures.",
+                        *([f"Signal: {s}" for s in signals[:4]] if signals else [f"Overall signal strength: {fake_prob:.2f} ({risk_level} risk)."]),
                         *c2pa_notes,
                         *exif_notes,
-                    ] or [f"[Groq vision] {risk_level} risk — fake probability {fake_prob:.1%}."],
+                    ],
                 )
             logger.warning("ML models and HF API unavailable, falling back to heuristic analysis")
             return await self._fallback.analyze(image_bytes, image_url)
