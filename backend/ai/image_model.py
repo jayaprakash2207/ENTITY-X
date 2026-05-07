@@ -381,29 +381,37 @@ class RealDeepfakeAnalyzer:
         ]
 
         for model in models:
-            try:
-                url = f'https://api-inference.huggingface.co/models/{model}'
-                async with httpx.AsyncClient(timeout=40.0) as client:
-                    resp = await client.post(
-                        url,
-                        content=image_bytes,
-                        headers={
-                            'Authorization': f'Bearer {hf_key}',
-                            'Content-Type': 'application/octet-stream',
-                        },
-                    )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if isinstance(data, list) and data:
-                        result = {r['label'].lower(): r['score'] for r in data}
-                        logger.info(f'[HF API] {model} → {result}')
-                        return result
-                elif resp.status_code == 503:
-                    logger.info(f'[HF API] {model} still loading, trying next...')
-                else:
-                    logger.warning(f'[HF API] {model} returned {resp.status_code}')
-            except Exception as e:
-                logger.warning(f'[HF API] {model} error: {e}')
+            url = f'https://api-inference.huggingface.co/models/{model}'
+            # Retry up to 3 times to handle model cold-start (HF free tier loads models on demand)
+            for retry in range(3):
+                try:
+                    async with httpx.AsyncClient(timeout=45.0) as client:
+                        resp = await client.post(
+                            url,
+                            content=image_bytes,
+                            headers={
+                                'Authorization': f'Bearer {hf_key}',
+                                'Content-Type': 'application/octet-stream',
+                                'x-wait-for-model': 'true',
+                            },
+                        )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if isinstance(data, list) and data:
+                            result = {r['label'].lower(): r['score'] for r in data}
+                            logger.info(f'[HF API] {model} → {result}')
+                            return result
+                        break  # unexpected format — try next model
+                    elif resp.status_code == 503:
+                        wait = 8 * (retry + 1)
+                        logger.info(f'[HF API] {model} loading (retry {retry+1}/3), waiting {wait}s...')
+                        await asyncio.sleep(wait)
+                    else:
+                        logger.warning(f'[HF API] {model} returned {resp.status_code}: {resp.text[:100]}')
+                        break  # non-recoverable — try next model
+                except Exception as e:
+                    logger.warning(f'[HF API] {model} error: {e}')
+                    break
 
         return None
 
