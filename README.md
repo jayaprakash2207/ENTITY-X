@@ -4,6 +4,10 @@
 
 <br/>
 
+<img src="public/icon.png" width="140" style="border-radius:32px;box-shadow:0 0 40px #8b5cf6;" alt="Entity X Logo"/>
+
+<br/>
+
 <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=900&size=22&pause=1000&color=8B5CF6&center=true&vCenter=true&width=800&lines=🛡️+The+World's+Most+Advanced+Deepfake+Detector;🔬+5-Model+AI+Ensemble+•+99.3%25+Accuracy;🌐+Live+Browser+AI+•+Real-Time+Forensics;⚖️+Legal+AI+•+Trust+Score+•+Evidence+Packager;🤖+AI+Browser+Agent+•+Navigate+with+Intelligence" alt="Typing SVG"/>
 
 <br/><br/>
